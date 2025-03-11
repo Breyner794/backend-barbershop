@@ -1,34 +1,37 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
-const serviceSchema = new mongoose.Schema({
-    id:{
-        type: Number,
-        required: true,
-        unique: true,   
+const serviceSchema = new mongoose.Schema(
+  {
+    id: {
+      type: Number,
+      required: true,
+      unique: true,
     },
-    title:{
-        type: String,
-        required:[true,'Titulo Obligatorio para el servicio.'],
+    title: {
+      type: String,
+      required: [true, "Titulo Obligatorio para el servicio."],
     },
-    price:{
-        type: Number,
-        required: [true,'Precio obligatorio.']
+    price: {
+      type: Number,
+      required: [true, "Precio obligatorio."],
     },
-    duration:{
-        type: Number,
-        required:[true,'Duracion del servicio requerido.']
+    duration: {
+      type: Number,
+      required: [true, "Duracion del servicio requerido."],
     },
-    includes:{
-        type: [String],
-        required:[true, 'Require al menos un servicio.'],
+    includes: {
+      type: [String],
+      required: [true, "Require al menos un servicio."],
     },
-    icon:{
-        type: String,
+    icon: {
+      type: String,
     },
-},{
-        strict: true,
-        timestamps: true
-});
+  },
+  {
+    strict: true,
+    timestamps: true,
+  }
+);
 
-const Service = mongoose.model('Service', serviceSchema);
+const Service = mongoose.model("Service", serviceSchema);
 export default Service;

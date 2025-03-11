@@ -21,7 +21,35 @@ export const getAllServices = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
+      message: "Error interno del servidor",
+      error: error.message,
+    });
+  }
+};
+
+/*Busqueda por id*/
+
+export const getByIdServices = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const services = await Service.findById(id);
+
+    if (services.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No hay servicios creados en este momento 🔎.",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      count: services.length,
+      data: services,
+      message: "Servicios recuperados exitosamente ✅.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error interno del servidor",
       error: error.message,
     });
   }
@@ -36,12 +64,12 @@ export const createServices = async (req, res) => {
     res.status(201).json({
       success: true,
       data: saveServices,
-      message: "Nuevo se creo exitosamente. ✅",
+      message: "Nuevo Servicio se creo exitosamente. ✅",
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: 'Datos inválidos',
+      message: "Datos inválidos",
       error: error.message,
     });
   }
@@ -57,13 +85,17 @@ export const updateServices = async (req, res) => {
       runValidators: true,
     });
     if (!updateServices) {
-      return res.status(404).json({ message: 'Servicio no encontrado. ❌' });
+      return res.status(404).json({ message: "Servicio no encontrado. ❌" });
     }
-    res.status(200).json(updateServices);
+    res.status(200).json({
+      success: true,
+      data: updateServices,
+      message: "Se actualizo el registro exitosamente. ✅",
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
+      message: "Error interno del servidor",
       error: error.message,
     });
   }
@@ -74,7 +106,7 @@ export const updateServices = async (req, res) => {
 export const deleteServices = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleteServices = await Service.findByIdDelete(id);
+    const deleteServices = await Service.findByIdAndDelete(id);
 
     if (!deleteServices) {
       return res.status(404).json({
@@ -82,7 +114,8 @@ export const deleteServices = async (req, res) => {
       });
     }
     res.status(200).json({
-      message: "Reserva eliminada correctamente",
+      data: deleteServices,
+      message: "Servicio eliminado correctamente ♻️",
     });
   } catch (error) {
     res.status(500).json({

@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+import mongoose from "mongoose";
+import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -12,5 +12,3 @@ export const connectDB = async () => {
     process.exit(1); // Termina el proceso con error
   }
 };
-
-// Si quieres exportar mongoose también
