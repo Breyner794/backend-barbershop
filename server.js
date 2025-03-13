@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import serviceRoutes from "./src/routes/service.routes.js";
 import siteRoutes from "./src/routes/site.routes.js";
 import barberRoutes from "./src/routes/barber.routes.js";
+import userRoutes from "./src/routes/user.routes.js";
 
 dotenv.config();
 const app = express();
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use("/api/services", serviceRoutes);
 app.use("/api/site", siteRoutes);
 app.use("/api/barber", barberRoutes);
+app.use("/api/user", userRoutes);
 
 app.get("/", (req, res) => {
   res.send("API del sistema de servicios esta funcionando");
