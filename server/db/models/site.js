@@ -15,7 +15,7 @@ const siteSchema = new mongoose.Schema(
       required: [true, "Se require un numero de telefono valido."],
     },
     headquarter_time: {
-      type: Date,
+      type: String,
       required: [true, "Se require una fecha."],
     },
   },
