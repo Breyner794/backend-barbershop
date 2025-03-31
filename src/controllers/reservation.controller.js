@@ -16,7 +16,7 @@ export const getAllReservation = async (req, res) => {
             success: true,
             count: reservation.length,
             data: reservation,
-            message: "Barberos recuperados exitosamente ✅.",
+            message: "Reservas recuperadas exitosamente ✅.",
           });
 
         }catch (error) {
