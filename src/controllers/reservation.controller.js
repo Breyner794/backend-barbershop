@@ -4,7 +4,11 @@ import Site from "../../server/db/models/site.js";
 
 export const getAllReservation = async (req, res) => {
     try{
-        const reservation = await Reservation.find().sort({createdAt: -1});
+        const reservation = await Reservation.find()
+        .sort({ createdAt: -1 })
+        .populate("service", { title: 1, price: 1 })
+        .populate("site", { name: 1 })
+        .populate("barber", { name_barber: 1, last_name_barber: 1 })
 
         if (reservation.length === 0){
             return res.status(400).json({
@@ -98,6 +102,38 @@ export const updateReservation = async (req, res) => {
             });
         }    
 }
+
+export const updateReservationState = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { state } = req.body;
+  
+      const updatedReservation = await Reservation.findByIdAndUpdate(
+        id,
+        { state }, // Solo actualizamos el estado
+        { new: true, runValidators: false } // Importante: runValidators: false para evitar las validaciones completas
+      );
+  
+      if (!updatedReservation) {
+        return res.status(404).json({ 
+            success: false,
+             message: "Reserva no encontrada. ❌"
+             });
+      }
+  
+      res.status(200).json({
+         success: true,
+          data: updatedReservation,
+           message: 'Estado de la reserva actualizado.'
+         });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+         message: 'Error al actualizar el estado.',
+          error: error.message
+         });
+    }
+  };
 
 export const deleteReservation = async (req, res) => {
   try {
