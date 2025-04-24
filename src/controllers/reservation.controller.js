@@ -8,7 +8,7 @@ export const getAllReservation = async (req, res) => {
         .sort({ createdAt: -1 })
         .populate("service", { title: 1, price: 1 })
         .populate("site", { name: 1 })
-        .populate("barber", { name_barber: 1, last_name_barber: 1 })
+        .populate("barber", { name_barber: 1, last_name_barber: 1, imageUrl:1  })
 
         if (reservation.length === 0){
             return res.status(400).json({
