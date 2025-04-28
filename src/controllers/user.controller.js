@@ -74,36 +74,60 @@ export const getByIdUser = async (req, res) => {
 
   export const updateUser = async (req, res) => {
     try {
-      const { id_barber } = req.body;
+      const { id } = req.params;
+      const { name, phone, email, password, role, id_barber, isActive } = req.body;
   
-      const current_barber = await Barber.findOne({ _id: id_barber });
-  
-      if (!current_barber) {
-        return res.status(404).json({
-          success: false,
-          message: "Barbero al que desea actualizar no existe",
-        });
-      }
-  
-      const updateUser = await User.findByIdAndUpdate(
-        req.params.id,
-        {
-          ...req.body,
-          id_barber: current_barber._id,
-        },
-        {
-          new: true,
-          runValidators: true,
-        }
-      );
-      if (!updateUser) {
+      const userToUpdate = await User.findById(id);
+      if (!userToUpdate) {
         return res.status(404).json({ message: "Usuario no encontrado. ❌" });
       }
+  
+      // Actualizar los campos básicos
+      if (name) userToUpdate.name = name;
+      if (phone) userToUpdate.phone = phone;
+      if (email) userToUpdate.email = email;
+      if (password) userToUpdate.password = password;
+      if (isActive !== undefined) userToUpdate.isActive = isActive;
+  
+      // Manejar la actualización del rol y el id_barber condicionalmente
+      if (role) {
+        userToUpdate.role = role;
+        if (role !== 'barbero') {
+          userToUpdate.id_barber = undefined;
+        } else if (id_barber) {
+          const current_barber = await Barber.findOne({ _id: id_barber });
+          if (!current_barber) {
+            return res.status(404).json({
+              success: false,
+              message: "El barbero especificado no existe.",
+            });
+          }
+          userToUpdate.id_barber = current_barber._id;
+        } else if (role === 'barbero' && !userToUpdate.id_barber) {
+          console.warn(`ADVERTENCIA: Intentando actualizar usuario ${id} a barbero sin proporcionar id_barber.`);
+          
+        }
+      } else if (id_barber && userToUpdate.role === 'barbero') {
+        // Si no se cambia el rol pero se proporciona un id_barber, actualizarlo
+        const current_barber = await Barber.findOne({ _id: id_barber });
+        if (!current_barber) {
+          return res.status(404).json({
+            success: false,
+            message: "El barbero especificado no existe.",
+          });
+        }
+        userToUpdate.id_barber = current_barber._id;
+      } else if (id_barber === null || id_barber === undefined) {
+          userToUpdate.id_barber = undefined;
+      }
+  
+      const updatedUser = await userToUpdate.save({ runValidators: true });
       res.status(200).json({
         success: true,
-        data: updateUser,
-        message: "Se actualizo el barbero exitosamente. ✅",
+        data: updatedUser,
+        message: "Usuario actualizado exitosamente. ✅",
       });
+  
     } catch (error) {
       res.status(500).json({
         success: false,
