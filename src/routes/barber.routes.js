@@ -1,5 +1,5 @@
 import express from "express";
-
+import { protect, restrictTo } from "../controllers/auth.Controller.js";
 import {
   getAllBarber,
   getByIdBarber,
@@ -12,6 +12,11 @@ const router = express.Router();
 
 router.get("/", getAllBarber);
 router.get("/:id", getByIdBarber);
+
+router.use(protect);
+
+router.use(restrictTo('admin','superadmin'));
+
 router.post("/", createBarber);
 router.put("/:id", updateBarber);
 router.delete("/:id", deleteBarber);

@@ -1,4 +1,6 @@
-import express, { Router } from 'express';
+import express from 'express';
+
+import { protect, restrictTo } from "../controllers/auth.Controller.js";
 
 import {
     getAllUser,
@@ -10,6 +12,10 @@ import {
 } from '../controllers/user.controller.js'
 
 const router = express.Router();
+
+router.use(protect);
+
+router.use(restrictTo('admin', 'superadmin'));
 
 router.get("/", getAllUser);
 router.get("/:id", getByIdUser);
