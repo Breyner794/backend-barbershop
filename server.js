@@ -18,7 +18,10 @@ const PORT = process.env.PORT || 5050;
   /*middleware*/
 }
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // ¡Importante! El origen de tu frontend React
+  credentials: true // Permite que el navegador envíe cookies o cabeceras de autorización
+}));
 
 app.use(express.json());
 app.use(cookieParser());

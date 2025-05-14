@@ -7,13 +7,16 @@ import {
     getByIdUser,
     createUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    getMe
 
 } from '../controllers/user.controller.js'
 
 const router = express.Router();
 
 router.use(protect);
+
+router.get("/me", getMe);
 
 router.use(restrictTo('admin', 'superadmin'));
 

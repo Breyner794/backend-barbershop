@@ -1,6 +1,17 @@
 import User from "../../server/db/models/user.js";
 import Barber from "../../server/db/models/barber.js";
 
+export const getMe = (req, res, next) => {
+  
+  res.status(200).json({
+    status: 'success',
+    data: {
+      user: req.user 
+      
+    }
+  });
+};
+
 export const getAllUser = async (req, res) => {
     try{
         const user = await User.find().sort({creatAt: -1});

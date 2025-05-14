@@ -16,12 +16,12 @@ router.post("/", createReservation);
 router.use(protect);
 //Ruta protegida para los autenticados, solo podran ver las reservas mas
 //no las funcionalidades
-router.get("/", getAllReservation);
+
 
 //Ruta para dar acceso a las funcionalidades, como barberos, admin y superadmin
 //podran hacer las funcionalidades, menos eliminar...
 router.use(restrictTo('barbero','admin','superadmin'));
-
+router.get("/", getAllReservation);
 router.put("/:id", updateReservation);
 router.patch("/:id/status", updateReservationState);
 
