@@ -7,6 +7,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    last_name: {
+    type: String,
+    required: function() {
+      return this.role === "barbero";
+      },
+    },
     phone: {
       type: String,
     },
@@ -26,11 +32,16 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "barbero", "recepcionista", "superadmin"],
       required: true,
     },
-    id_barber: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Barber",
-      required: false, // No es requerido para todos los roles
-    },
+    site_barber: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Site",
+    required: function() {
+      return this.role === "barbero";
+    }
+  },
+  imageUrl: {
+    type: String,
+  },
     isActive: { type: Boolean, default: true },
   },
   {
