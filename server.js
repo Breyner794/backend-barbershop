@@ -10,6 +10,8 @@ import barberRoutes from "./src/routes/barber.routes.js";
 import userRoutes from "./src/routes/user.routes.js";
 import reservationRoutes from "./src/routes/reservation.routes.js"
 import authRoutes from "./src/routes/auth.routes.js"
+import availabilityExceptionRoutes from "./src/routes/availabilityException.routes.js"
+import barberAvailability from "./src/routes/barbersAvailability.routes.js"
 
 dotenv.config();
 const app = express();
@@ -32,6 +34,8 @@ app.use("/api/site", siteRoutes);
 app.use("/api/barber", barberRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/reservation", reservationRoutes);
+app.use("/api/availability/exceptions", availabilityExceptionRoutes);
+app.use("/api/availability/", barberAvailability);
 
 // Middleware para manejar rutas no encontradas
 app.all('*', (req, res) => {
