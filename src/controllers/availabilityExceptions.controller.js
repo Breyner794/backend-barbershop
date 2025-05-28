@@ -1,5 +1,6 @@
 import Availabilityexception from "../../server/db/models/availabilityExceptions.js";
 import { validateTimeSlots } from "../../utils/validators.js"
+import { validateAvailabilityConflicts } from "../../utils/availabilityConflictValidator.js";
 
 export const getAvailabilityByBarberId = async (req, res) => {
   try {
@@ -170,7 +171,7 @@ export const createOrUpdateAvailability = async (req, res) => {
 
   try{
 
-    if (timeSlots){
+    if (timeSlots && timeSlots.length > 0) { // se agrega el && timeSlots.length > 0
       const validation = validateTimeSlots(timeSlots);
       if(!validation.valid){
         return res.status(400).json({
@@ -185,6 +186,21 @@ export const createOrUpdateAvailability = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "El formato de fecha debe ser YYYY-MM-DD",  //FUNCIONA LA VALIDACION
+      });
+    }
+
+    const conflictValidation = await validateAvailabilityConflicts('EXCEPTION',{
+      barberId,
+      date,
+      timeSlots,
+      isWorkingDay: req.body.isWorkingDay
+    });
+
+    if (!conflictValidation.valid){
+      return res.status(409).json({
+        success: false,
+        message: conflictValidation.error,
+        conflicts: conflictValidation.conflicts || []
       });
     }
 
