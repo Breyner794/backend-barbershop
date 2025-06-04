@@ -1,30 +1,43 @@
-import mongoose from "mongoose";
+import mongoose, { set } from "mongoose";
+
+function capitalizeWords (value){
+  if (typeof value !== 'string' || value.length === 0) return'';
+  return value
+  .toLowerCase()
+  .split(' ')
+  .map(word =>{
+    if (word.length === 0) return '';
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  })
+  .join(' ');
+}
 
 const serviceSchema = new mongoose.Schema(
   {
-    id: {
-      type: Number,
-      required: true,
-      unique: true,
-    },
-    title: {
+    name: {
       type: String,
-      required: [true, "Titulo Obligatorio para el servicio."],
+      required: true,
+      set: capitalizeWords
     },
     price: {
       type: Number,
-      required: [true, "Precio obligatorio."],
+      required: true
     },
     duration: {
       type: Number,
-      required: [true, "Duracion del servicio requerido."],
+      required:true,
     },
-    includes: {
-      type: [String],
-      required: [true, "Require al menos un servicio."],
+    description: {
+      type:String,
+      set:capitalizeWords
+  },
+    image_Url: {
+      type: String, //Tener una imagen por default si no elige alguna imagen...
+      default: 'https://example.com/default-service-image.png'
     },
-    icon: {
-      type: String,
+    isActive: {
+      type: Boolean, //Poder activar el servicio o desactivarlo.
+      default: true,
     },
   },
   {
