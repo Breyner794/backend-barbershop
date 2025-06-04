@@ -1,7 +1,5 @@
 import Service from "../../server/db/models/Service.js";
 
-/*Buscar todos los servicios creados.*/
-
 export const getAllServices = async (req, res) => {
   try {
     const services = await Service.find().sort({ createdAt: -1 });
@@ -32,21 +30,27 @@ export const getAllServices = async (req, res) => {
 export const getByIdServices = async (req, res) => {
   try {
     const { id } = req.params;
-    const services = await Service.findById(id);
+    const service = await Service.findById(id);
 
-    if (services.length === 0) {
-      return res.status(400).json({
+    if (!service) {
+      return res.status(404).json({
         success: false,
-        message: "No hay servicios creados en este momento 🔎.",
+        message: "Servicio no encontrado con el ID proporcionado 🔎.",
       });
     }
     res.status(200).json({
       success: true,
-      count: services.length,
-      data: services,
+      count: 1,
+      data: service,
       message: "Servicios recuperados exitosamente ✅.",
     });
   } catch (error) {
+    if(error.name === 'CastError'){
+      return res.status(400).json({
+        success: false,
+        message: "ID de servicio con formato inválido.",
+      });
+    }
     res.status(500).json({
       success: false,
       message: "Error interno del servidor",
@@ -56,7 +60,6 @@ export const getByIdServices = async (req, res) => {
 };
 
 /*Crear un servicio.*/
-
 export const createServices = async (req, res) => {
   try {
     const newservices = new Service(req.body);
@@ -85,7 +88,9 @@ export const updateServices = async (req, res) => {
       runValidators: true,
     });
     if (!updateServices) {
-      return res.status(404).json({ message: "Servicio no encontrado. ❌" });
+      return res.status(404).json({
+        message: "Servicio no encontrado. ❌" 
+      });
     }
     res.status(200).json({
       success: true,
