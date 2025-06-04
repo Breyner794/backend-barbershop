@@ -14,10 +14,10 @@ const router = express.Router();
 router.get("/", getAllServices);
 router.get("/:id", getByIdServices);
 //Ruta protegida - necesita autenticacion, un login
-router.use(protect);
+//router.use(protect);
 
 //Ruta con permisos de roles seleccionados.
-router.use(restrictTo('admin', 'superadmin'));
+//router.use(restrictTo('admin', 'superadmin'));
 
 router.post("/", createServices);
 router.put("/:id", updateServices);
