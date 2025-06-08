@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import cookieParser from 'cookie-parser';
+import { scheduleTasks } from "./server/cron/jobs.js";
 import { connectDB } from "./server/db/connection.js";
 import dotenv from "dotenv";
 import serviceRoutes from "./src/routes/service.routes.js";
@@ -20,6 +21,8 @@ const PORT = process.env.PORT || 5050;
 {
   /*middleware*/
 }
+
+scheduleTasks();
 
 app.use(cors({
   origin: 'http://localhost:5173', // ¡Importante! El origen de tu frontend React
