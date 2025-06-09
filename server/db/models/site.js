@@ -11,12 +11,16 @@ const siteSchema = new mongoose.Schema(
       required: [true, "Se requiere la direccion exacta de la sede"],
     },
     phone_site: {
-      type: Number,
+      type: String,
       required: [true, "Se require un numero de telefono valido."],
     },
     headquarter_time: {
       type: String,
-      required: [true, "Se require una fecha."],
+      required: [true, "Se require un horario general de atencion."],
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {
