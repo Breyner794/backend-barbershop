@@ -1,32 +1,29 @@
-import express, { Router } from "express";
-import { login, protect, restrictTo } from "../controllers/auth.Controller.js";
+import express from 'express';
+
 import {
-  createUser,
-  getMe
-  
-} from "../controllers/user.controller.js";
+    login,
+    forgotPassword,
+    resetPassword
+} from '../controllers/auth.Controller.js';
 
 const router = express.Router();
 
-// Rutas públicasonc
-router.post("/login", login);
+// --- DEFINICIÓN DE RUTAS PÚBLICAS DE AUTENTICACIÓN ---
 
-router.post("/registro", createUser);
+// @desc    Iniciar sesión de un usuario
+// @route   POST /api/auth/login
+// @access  Public
+router.post('/login', login);
 
-// Rutas protegidas
+// @desc    Solicitar un email para restablecer la contraseña
+// @route   POST /api/auth/forgot-password
+// @access  Public
+router.post('/forgot-password', forgotPassword);
 
-router.use(protect);
+// @desc    Restablecer la contraseña usando un token enviado por email
+// @route   PATCH /api/auth/reset-password/:token
+// @access  Public
+router.patch('/reset-password/:token', resetPassword);
 
-router.get('/me',getMe)
-
-// router.use(restrictTo("admin"));
-
-// router.route("/usuarios").get(getAllUser);
-
-// router
-//   .route("/usuarios/:id")
-//   .get(getByIdUser)
-//   .patch(updateUser)
-//   .delete(deleteUser);
 
 export default router;
