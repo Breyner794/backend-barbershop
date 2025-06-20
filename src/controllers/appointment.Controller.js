@@ -1,9 +1,10 @@
 import Appointment from "../../server/db/models/appoiment.js";
-import Availabilitybarber from "../../server/db/models/barbersAvailability.js";
-import Availabilityexception from "../../server/db/models/availabilityExceptions.js";
+//import Availabilitybarber from "../../server/db/models/barbersAvailability.js";
+//import Availabilityexception from "../../server/db/models/availabilityExceptions.js";
 import Service from "../../server/db/models/Service.js";
 import { nanoid } from "nanoid";
 import mongoose from "mongoose";
+import { getEffectiveAvailability } from "../../utils/availabilityConflictValidator.js";
 
 const timeToMinutes = (time) => {
   if (!time || !time.includes(":")) return 0;
@@ -16,77 +17,158 @@ const getDayOfWeek = (dateString) => {
   return date.getDay();
 };
 
+// export const getAvailableSlotsForBooking = async (req, res) => {
+//   const { barberId, date} = req.query;
+
+//   try {
+//     //Validacion de entradas
+//     if (!barberId || !date /*|| !serviceId*/) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Los parametros BarberId, y Date , son requeridos.",
+//       });
+//     }
+
+//     //Determinar la disponibilidad base de barbero
+//     let workingTimeSlots = [];
+//     let barberIsWorking = false;
+//     let usingException = false;
+
+//     // 1. Verificar si hay excepción de disponibilidad  
+//     const exceptionAvailability = await Availabilityexception.findOne({
+//       barberId,
+//       date,
+//     });
+
+//     // 2. Solo usar la excepción si está configurada para trabajar
+//     if (
+//       exceptionAvailability &&
+//       exceptionAvailability.isWorkingDay &&
+//       exceptionAvailability.timeSlots.length > 0
+//     ) {
+//       console.log(
+//         "🔄 Usando excepción de disponibilidad:",
+//         exceptionAvailability
+//       );
+//       workingTimeSlots = exceptionAvailability.timeSlots;
+//       barberIsWorking = true;
+//       usingException = true;
+//     }
+
+//     // 3. Si no hay excepción válida para trabajar, usar disponibilidad semanal
+//     if (!usingException) {
+//       const dayOfWeek = getDayOfWeek(date);
+//       console.log(`📅 Día de la semana: ${dayOfWeek} para fecha ${date}`);
+
+//       const weeklyAvailability = await Availabilitybarber.findOne({
+//         barberId,
+//         dayOfWeek,
+//       });
+
+//       if (
+//         weeklyAvailability &&
+//         weeklyAvailability.isWorkingDay &&
+//         weeklyAvailability.timeSlots.length > 0
+//       ) {
+//         console.log("📋 Usando disponibilidad semanal:", weeklyAvailability);
+//         workingTimeSlots = weeklyAvailability.timeSlots;
+//         barberIsWorking = true;
+//       } else {
+//         barberIsWorking = false;
+//       }
+//     }
+
+//     /*Consultar Citas Existentes Para la consulta de citas, es importante que el campo 'date' en la BD
+//          y el 'date' de la query se manejen consistentemente (ej. ambos como Date a medianoche UTC o similar)*/
+
+//     const appointmentsOnDate = await Appointment.find({
+//       barberId,
+//       date: new Date(date + "T00:00:00"),
+//       status: { $nin: ["cancelada", "no-asistió"] }, // Excluir citas que no bloquean tiempo
+//     });
+
+//     //filtrar slots ocupados
+//     const availabilitySlots = workingTimeSlots.filter((slot) => {
+//       const slotStartMinutes = timeToMinutes(slot.startTime);
+//       const slotEndMinutes = timeToMinutes(slot.endTime);
+
+//       const isOccupied = appointmentsOnDate.some((appointment) => {
+//         const appointmentStartMinutes = timeToMinutes(appointment.startTime);
+//         const appointmentEndMinutes = timeToMinutes(appointment.endTime);
+//         // Lógica de solapamiento: Un slot está ocupado si (InicioCita < FinSlot) Y (FinCita > InicioSlot)
+//         return (
+//           appointmentStartMinutes < slotEndMinutes &&
+//           appointmentEndMinutes > slotStartMinutes
+//         );
+//       });
+
+//       return !isOccupied; // Mantener el slot solo si NO está ocupado
+//     });
+
+//     if (availabilitySlots.length === 0) {
+//       return res.status(200).json({
+//         success: true,
+//         data: [],
+//         message:
+//           "No hay horarios disponibles para esta fecha, todos estan ocupados o no hay configuracion",
+//       });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Horarios disponibles recuperados con exito ✅",
+//       data: availabilitySlots, // Podria devolver solo .map(slot => slot.startTime) prueba opcional...
+//     });
+//   } catch (error) {
+//     console.error("Error en getAvailableSlotsForBooking:", error);
+//     res.status(500).json({
+//       success: false,
+//       message:
+//         "Error interno del servidor al obtener los horarios disponibles.",
+//       error: error.message,
+//     });
+//   }
+// };
+
 export const getAvailableSlotsForBooking = async (req, res) => {
-  const { barberId, date, serviceId } = req.query;
+  const { barberId, date } = req.query;
 
   try {
-    //Validacion de entradas
-    if (!barberId || !date /*|| !serviceId*/) {
+    if (!barberId || !date) {
       return res.status(400).json({
         success: false,
         message: "Los parametros BarberId, Date y servicesId, son requeridos.",
       });
     }
-
-    //Determinar la disponibilidad base de barbero
-    let workingTimeSlots = [];
-    let barberIsWorking = false;
-    let usingException = false;
-
-    // 1. Verificar si hay excepción de disponibilidad
-    const exceptionAvailability = await Availabilityexception.findOne({
+    
+    const effectiveAvailability = await getEffectiveAvailability(
       barberId,
-      date,
-    });
+      date
+    );
 
-    // 2. Solo usar la excepción si está configurada para trabajar
+    // 3. Verificamos si, según la fuente de verdad, el barbero trabaja.
     if (
-      exceptionAvailability &&
-      exceptionAvailability.isWorkingDay &&
-      exceptionAvailability.timeSlots.length > 0
+      !effectiveAvailability.isWorkingDay ||
+      effectiveAvailability.timeSlots === 0
     ) {
-      console.log(
-        "🔄 Usando excepción de disponibilidad:",
-        exceptionAvailability
-      );
-      workingTimeSlots = exceptionAvailability.timeSlots;
-      barberIsWorking = true;
-      usingException = true;
-    }
-
-    // 3. Si no hay excepción válida para trabajar, usar disponibilidad semanal
-    if (!usingException) {
-      const dayOfWeek = getDayOfWeek(date);
-      console.log(`📅 Día de la semana: ${dayOfWeek} para fecha ${date}`);
-
-      const weeklyAvailability = await Availabilitybarber.findOne({
-        barberId,
-        dayOfWeek,
+      return res.status(200).json({
+        success: true,
+        data: [],
+        message: "El barbero no tiene horarios disponibles para esta fecha.",
+        source: effectiveAvailability.source, // Dato útil para debug
       });
-
-      if (
-        weeklyAvailability &&
-        weeklyAvailability.isWorkingDay &&
-        weeklyAvailability.timeSlots.length > 0
-      ) {
-        console.log("📋 Usando disponibilidad semanal:", weeklyAvailability);
-        workingTimeSlots = weeklyAvailability.timeSlots;
-        barberIsWorking = true;
-      } else {
-        barberIsWorking = false;
-      }
     }
 
-    /*Consultar Citas Existentes Para la consulta de citas, es importante que el campo 'date' en la BD
-         y el 'date' de la query se manejen consistentemente (ej. ambos como Date a medianoche UTC o similar)*/
+    // 4. Si trabaja, usamos SUS horarios para el resto del proceso.
+    const workingTimeSlots = effectiveAvailability.timeSlots;
 
+    // 5. El resto de tu código para consultar citas y filtrar es casi idéntico.
     const appointmentsOnDate = await Appointment.find({
       barberId,
       date: new Date(date + "T00:00:00"),
-      status: { $nin: ["cancelada", "no-asistió"] }, // Excluir citas que no bloquean tiempo
+      status: { $nin: ["cancelada", "no-asistió"] },
     });
 
-    //filtrar slots ocupados
     const availabilitySlots = workingTimeSlots.filter((slot) => {
       const slotStartMinutes = timeToMinutes(slot.startTime);
       const slotEndMinutes = timeToMinutes(slot.endTime);
@@ -94,38 +176,35 @@ export const getAvailableSlotsForBooking = async (req, res) => {
       const isOccupied = appointmentsOnDate.some((appointment) => {
         const appointmentStartMinutes = timeToMinutes(appointment.startTime);
         const appointmentEndMinutes = timeToMinutes(appointment.endTime);
-        // Lógica de solapamiento: Un slot está ocupado si (InicioCita < FinSlot) Y (FinCita > InicioSlot)
         return (
           appointmentStartMinutes < slotEndMinutes &&
           appointmentEndMinutes > slotStartMinutes
         );
       });
-
-      return !isOccupied; // Mantener el slot solo si NO está ocupado
+      return !isOccupied;
     });
 
     if (availabilitySlots.length === 0) {
-      return res.status(404).json({
+      return res.status(200).json({
         success: true,
         data: [],
         message:
-          "No hay horarios disponibles para esta fecha, todos estan ocupados o no hay configuracion",
+          "No hay horarios disponibles para esta fecha, todos están ocupados.",
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Horarios disponibles recuperados con exito ✅",
-      data: availabilitySlots, // Podria devolver solo .map(slot => slot.startTime) prueba opcional...
-    });
-  } catch (error) {
-    console.error("Error en getAvailableSlotsForBooking:", error);
+     return res.status(200).json({
+            success: true,
+            message: "Horarios disponibles recuperados con éxito ✅",
+            data: availabilitySlots,
+        });
+  } catch (err) {
+    console.error("Error en getAvailableSlotsForBooking:", err);
     res.status(500).json({
-      success: false,
-      message:
-        "Error interno del servidor al obtener los horarios disponibles.",
-      error: error.message,
-    });
+            success: false,
+            message: "Error interno del servidor al obtener los horarios disponibles.",
+            error: err.message,
+        });
   }
 };
 
@@ -366,75 +445,6 @@ export const getAppointmentsByBarber = async (req, res) => {
   }
 };
 
-/*Esta forma es para buscar una cita pero del cliente la intecion es para que el usuario pueda buscar su cita
-pero como no tenemos sistema de login para el cliente entonces es mas complejo, entonces e implementa algo que 
-es con el codigo generativo.*/
-
-// export const getAppointmentsByClient = async (req, res) => {
-//     const { clientPhone, clientEmail, status, sort } = req.query;
-
-//     try {
-//         // 1. Validar que se proporcione al menos un identificador de cliente
-//         if (!clientPhone && !clientEmail) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Se requiere clientPhone o clientEmail para buscar las reservas."
-//             });
-//         }
-
-//         // 2. Construir el objeto de consulta (query)
-//         const query = {};
-
-//         if (clientPhone) {
-//             query.clientPhone = clientPhone;
-//         } else if (clientEmail) {
-//             query.clientEmail = clientEmail.toLowerCase(); // Guardar y buscar emails en minúsculas es buena práctica
-//         }
-
-//         if (status) {
-//             query.status = status;
-//         }
-//         // Podrías añadir filtros de fecha aquí también si es relevante para el cliente
-
-//         // 3. Definir opciones de ordenación
-//         let sortOption = { date: -1, startTime: -1 }; // Por defecto: más recientes primero
-//         if (sort === 'dateAsc') {
-//             sortOption = { date: 1, startTime: 1 };
-//         }
-
-//         // 4. Buscar las reservas en la base de datos
-//         const appointments = await Appointment.find(query)
-//             .populate('barberId', 'name')           // Para mostrar el nombre del barbero
-//             .populate('serviceId', 'name duration') // Para mostrar el nombre y duración del servicio
-//             .populate('siteId', 'name address')     // Para mostrar el nombre y dirección de la sede
-//             .sort(sortOption);
-
-//         // 5. Devolver las reservas encontradas
-//         if (appointments.length === 0) {
-//             return res.status(200).json({ // Éxito, pero no hay datos
-//                 success: true,
-//                 message: "No se encontraron reservas para los datos de cliente proporcionados.",
-//                 data: []
-//             });
-//         }
-
-//         res.status(200).json({
-//             success: true,
-//             message: "Reservas del cliente recuperadas con éxito. ✅",
-//             count: appointments.length,
-//             data: appointments
-//         });
-
-//     } catch (error) {
-//         console.error("Error en getAppointmentsByClient:", error);
-//         res.status(500).json({
-//             success: false,
-//             message: "Error interno del servidor al obtener las reservas del cliente.",
-//             error: error.message
-//         });
-//     }
-// };
-
 export const getAppointmentByConfirmationDetails = async (req, res) => {
   const { confirmationCode, clientIdentifier, identifierType } = req.body;
 
@@ -463,7 +473,7 @@ export const getAppointmentByConfirmationDetails = async (req, res) => {
     }
 
     const appointment = await Appointment.findOne(query)
-      .populate("barberId", "name")
+      .populate("barberId", {name: 1, last_name: 1})
       .populate("serviceId", "duration")
       .populate("siteId", "address_site");
 
