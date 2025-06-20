@@ -1,6 +1,6 @@
 import Availabilityexception from "../../server/db/models/availabilityExceptions.js";
 import { validateTimeSlots } from "../../utils/validators.js"
-import { validateAvailabilityConflicts } from "../../utils/availabilityConflictValidator.js";
+//import { validateAvailabilityConflicts } from "../../utils/availabilityConflictValidator.js";
 
 export const getAvailabilityByBarberId = async (req, res) => {
   try {
@@ -189,7 +189,8 @@ export const createOrUpdateAvailability = async (req, res) => {
       });
     }
 
-    const conflictValidation = await validateAvailabilityConflicts('EXCEPTION',{
+     // --- BLOQUE COMENTADO ---
+    /*const conflictValidation = await validateAvailabilityConflicts('EXCEPTION',{
       barberId,
       date,
       timeSlots,
@@ -202,7 +203,7 @@ export const createOrUpdateAvailability = async (req, res) => {
         message: conflictValidation.error,
         conflicts: conflictValidation.conflicts || []
       });
-    }
+    }*/
 
     const existingException = await Availabilityexception.findOne({
       barberId,
