@@ -18,10 +18,13 @@ export const getBarberAvailability = async (req, res) => {
         success: false,
         message: "ID de barbero no válido",
       });
-    } else if (getAvailability.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Por el momento no hay disponibilidad configurada semanal por este barbero.",
+    } 
+    
+    if (getAvailability.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        message: "El barbero aún no ha configurado su disponibilidad semanal.",
       });
     }
 
