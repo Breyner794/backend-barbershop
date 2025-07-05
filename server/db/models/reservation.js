@@ -22,7 +22,7 @@ const ReservationSchema = new mongoose.Schema(
       required: false,
     },
     hour: {
-      type: String,
+      type: String, //cambiar esquema de hour.
       required: false,
     },
     service: {
