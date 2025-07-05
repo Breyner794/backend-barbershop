@@ -197,20 +197,20 @@ export const createOrUpdateAvailability = async (req, res) => {
     }
 
     // NUEVA VALIDACIÓN DE CONFLICTOS
-    const conflictValidation = await validateAvailabilityConflicts('WEEKLY', {
-      barberId,
-      dayOfWeek: day,
-      timeSlots: timeSlots || [],
-      isWorkingDay: isWorkingDay !== undefined ? isWorkingDay : true
-    })
+    // const conflictValidation = await validateAvailabilityConflicts('WEEKLY', {
+    //   barberId,
+    //   dayOfWeek: day,
+    //   timeSlots: timeSlots || [],
+    //   isWorkingDay: isWorkingDay !== undefined ? isWorkingDay : true
+    // })
 
-    if (!conflictValidation || !conflictValidation.valid){
-      return res.status(409).json({
-        success: false,
-        message: conflictValidation ? conflictValidation.error : "Error en validación de conflictos",
-        conflicts: conflictValidation ? conflictValidation.conflicts || [] : []
-      });
-    }
+    // if (!conflictValidation || !conflictValidation.valid){
+    //   return res.status(409).json({
+    //     success: false,
+    //     message: conflictValidation ? conflictValidation.error : "Error en validación de conflictos",
+    //     conflicts: conflictValidation ? conflictValidation.conflicts || [] : []
+    //   });
+    // }
 
     let availability = await Availabilitybarber.findOne({
       barberId,
