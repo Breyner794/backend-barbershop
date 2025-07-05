@@ -133,7 +133,7 @@ export const getBarbersBySite = async (req, res) => {
       site_barber: siteId,
       role: "barbero" // Opcional: asegurarte que solo sean barberos
     })
-    .populate('site_barber', 'name_site') 
+    .populate('site_barber', {name_site: 1}) 
     .select('name last_name phone site_barber role'); 
 
     if (!barbers) {
