@@ -136,8 +136,8 @@ export const getBarbersBySite = async (req, res) => {
     .populate('site_barber', 'name_site') 
     .select('name last_name phone site_barber role'); 
 
-    if (!barbers || barbers.length === 0) {
-      return res.status(404).json({
+    if (!barbers) {
+      return res.status(200).json({
         success: false,
         message: "No se encontraron barberos en esta sede... 🔎",
       });
