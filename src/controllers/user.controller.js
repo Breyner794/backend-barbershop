@@ -93,10 +93,19 @@ export const changeMyPassword = async (req, res) => {
 
     const user = await User.findById(req.user.id).select('+password');
     if (!(await user.comparePassword(currentPassword))){
-      return res.status(400).json({ 
+      return res.status(401).json({ 
         success: false, 
+        code: 'INCORRECT_CURRENT_PASSWORD',
         message: 'La contraseña actual es incorrecta.' });
     }
+
+    if (await user.comparePassword(newPassword)) {
+        return res.status(400).json({
+            success: false,
+            message: 'La nueva contraseña no puede ser igual a la actual.'
+        });
+    }
+    
     user.password = newPassword;
     await user.save();
 
@@ -105,7 +114,11 @@ export const changeMyPassword = async (req, res) => {
       message: 'Contraseña cambiada exitosamente.'
     });
   }catch (error){
-
+    console.error("Error en changeMyPassword:", error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al cambiar la contraseña.'
+    });
   }
 }
 
