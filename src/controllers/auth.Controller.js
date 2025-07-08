@@ -40,7 +40,7 @@ const crearEnviarToken = (user, statusCode, res) => {
     status: "success",
     token,
     data: {
-      user,
+      user: userProfile,
     },
   });
 };
