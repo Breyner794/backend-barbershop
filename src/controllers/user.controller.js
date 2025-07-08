@@ -1,5 +1,6 @@
 import User from "../../server/db/models/user.js";
 import Site from "../../server/db/models/site.js";
+import cloudinary from "../config/cloudinaryConfig.js";
 
 /* --- FUNCIONES PARA EL PROPIO USUARIO (AUTENTICADO) --- */
 
@@ -13,13 +14,53 @@ export const getMyProfile = (req, res) => {
 export const updateMyProfile = async (req,res) =>{
   try{
     //solo se actualizara campos no comprometederos.
-    const {name, last_name, phone, imageUrl} = req.body;
-    const filteredBody = {name, last_name, phone, imageUrl};
+    if (req.body.password || req.body.passwordConfirm){
+      return res.status(406).json({
+        success: false,
+        message: "Esta ruta no es para actualizar contraseñas. Por favor, usa /change-my-password."
+      })
+    }
+
+    const filteredBody = filterObj(req.body, 'name', 'last_name', 'phone');
+
+    console.log("Backend - req.body (después de filterObj):", filteredBody);
+
+    if (req.file){
+      console.log("Backend - Archivo recibido por Multer:", req.file);
+      try{
+        const result = await cloudinary.uploader.upload(
+          `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
+          {
+            folder: 'barberpro_avatars',
+            transformation: [{ width: 200, height: 200, crop: "fill", gravity: "face" }]
+          }
+        );
+         console.log("Backend - Respuesta de Cloudinary (secure_url):", result.secure_url);
+        filteredBody.imageUrl = result.secure_url;
+      }catch (uploadError){
+        console.error("Error al subir la imagen a Cloudinary:", uploadError);
+        return res.status(500).json({
+          success: false,
+          message: 'Error al subir la imagen de perfil. Por favor, intenta de nuevo.'
+        });
+      }
+    }else if (req.body.imageUrl === ''){
+      filteredBody.imageUrl = undefined;
+      console.log("Backend - Solicitud de eliminación de imagen detectada.");
+      //console.log("Backend - No se recibió archivo por Multer (req.file es undefined).");
+      //   if (req.body.imageUrl === null || req.body.imageUrl === ''){
+      //     filteredBody.imageUrl = undefined;
+      //     console.log("Backend - Solicitud de eliminación de imagen detectada.");
+      // }
+    }
 
     const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
             new: true,
             runValidators: true
         });
+
+          console.log("Backend - Usuario actualizado en DB (imageUrl):", updatedUser.imageUrl);
+          console.log("Backend - getPublicProfile() data:", updatedUser.      getPublicProfile());
 
         res.status(200).json({
           success: true,
@@ -27,10 +68,11 @@ export const updateMyProfile = async (req,res) =>{
           data: updatedUser.getPublicProfile()
         })
   }catch (error){
+    console.error("Error inesperado al actualizar el perfil:", error);
     res.status(400).json({ 
       success: false, 
-      message: 'Error al actualizar el perfil', 
-      /*error: error.message*/ });
+      message: 'Error al actualizar el perfil' +error.message, 
+    });
   }
 }
 
