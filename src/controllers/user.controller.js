@@ -2,6 +2,15 @@ import User from "../../server/db/models/user.js";
 import Site from "../../server/db/models/site.js";
 import cloudinary from "../config/cloudinaryConfig.js";
 
+// Función auxiliar para filtrar los campos permitidos del body (Strong Parameters)
+const filterObj = (obj, ...allowedFields) => {
+  const newObj = {};
+  Object.keys(obj).forEach(el => {
+    if (allowedFields.includes(el)) newObj[el] = obj[el];
+  });
+  return newObj;
+};
+
 /* --- FUNCIONES PARA EL PROPIO USUARIO (AUTENTICADO) --- */
 
 export const getMyProfile = (req, res) => {
