@@ -14,13 +14,14 @@ import {
     superUpdateUser,
     hardDeleteUser
 } from '../controllers/user.controller.js'
+import { uploadUserPhoto } from '../../utils/multerConfig.js';
 
 const router = express.Router();
 
 router.use(protect);
 // --- RUTAS PARA EL PROPIO USUARIO (logueado) ---
 router.get("/me", getMyProfile);
-router.patch("/update-my-profile", updateMyProfile);
+router.patch("/update-my-profile",uploadUserPhoto, updateMyProfile);
 router.patch("/change-my-password", changeMyPassword);
 
 // --- RUTAS PARA ADMINISTRADORES ---
