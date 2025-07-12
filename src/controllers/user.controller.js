@@ -518,7 +518,7 @@ export const superUpdateUser = async (req, res) => {
     if (phone !== undefined) userToUpdate.phone = phone;
     //if (email) userToUpdate.email = email;
     if (password) userToUpdate.password = password; // El pre-save hook se encargará del hash
-    if (imageUrl !== undefined) userToUpdate.imageUrl = imageUrl;
+    //if (imageUrl !== undefined) userToUpdate.imageUrl = imageUrl;
     if (isActive !== undefined) userToUpdate.isActive = isActive;
 
     // Manejar la actualización del rol y campos relacionados
