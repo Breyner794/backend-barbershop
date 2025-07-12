@@ -363,7 +363,30 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const { isActive } = req.body;
+    // Obtener el ID del usuario autenticado y el ID del usuario a actualizar
+    const currentUserId = req.user._id.toString();
+    const userIdToUpdate = id; // **Verificación de seguridad:** Prevenir que un usuario desactive su propia cuenta
+
+    if (userIdToUpdate === currentUserId && isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: "No puedes deshabilitar tu propia cuenta.",
+      });
+    }
+
     // El admin solo puede cambiar estos campos. No puede cambiar el ROL.
+    const updateData = filterObj(req.body, 'name', 'last_name', 'phone', 'isActive', 'site_barber');
+
+    // --- Manejo de site_barber para evitar el error de Cast ObjectId ---
+        // Verificamos si site_barber existe en la data y si es una cadena vacía.
+        if ('site_barber' in updateData && updateData.site_barber === '') {
+            // Si es una cadena vacía, la establecemos como undefined para que Mongoose no intente
+            // convertirla a ObjectId y en su lugar borre el campo si es necesario.
+            updateData.site_barber = undefined;
+        }
+        // --- Fin del manejo de site_barber ---
+
     if(req.file){
       console.log("Backend (updateUser) - Archivo recibido por Multer:", req.file);
       try{
