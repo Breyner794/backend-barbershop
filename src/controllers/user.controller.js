@@ -262,7 +262,8 @@ export const createUser = async (req, res) => {
             email,
             password, // El hook 'pre-save' se encarga del hash
             role,
-            site_barber: role === 'barbero' ? site_barber : undefined
+            site_barber: role === 'barbero' ? site_barber : undefined,
+            imageUrl: imageUrl
         });
 
         res.status(201).json({
