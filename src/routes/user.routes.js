@@ -29,21 +29,21 @@ router.route("/")
     .get(restrictTo('admin', 'superadmin'), getAllUser);
 
 router.route("/create-new-user")
-    .post(restrictTo('admin', 'superadmin'), createUser);
+    .post(restrictTo('admin', 'superadmin'),uploadUserPhoto, createUser);
     //.post(createUser); 
 
 router.route("/user/:id") // Ruta para obtener un usuario por ID
     .get(restrictTo('admin', 'superadmin'), getUserById);
 
 router.route("/admin/update/:id")
-    .patch(restrictTo('admin', 'superadmin'), updateUser);
+    .patch(restrictTo('admin', 'superadmin'),uploadUserPhoto, updateUser);
 
 router.route("/admin/delete/:id")
     .delete(restrictTo('admin', 'superadmin'), deleteUser);
 
 // --- RUTAS EXCLUSIVAS PARA SUPERADMIN ---
 router.route("/superadmin/update/:id")
-    .patch(restrictTo('superadmin'), superUpdateUser);
+    .patch(restrictTo('superadmin'),uploadUserPhoto, superUpdateUser);
 
 router.route("/superadmin/delete/:id")
     .delete(restrictTo('superadmin'), hardDeleteUser);
