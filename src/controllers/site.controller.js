@@ -131,7 +131,8 @@ export const getBarbersBySite = async (req, res) => {
     // Consulta correcta - filtrar barberos por sede
     const barbers = await User.find({ 
       site_barber: siteId,
-      role: "barbero" // Opcional: asegurarte que solo sean barberos
+      role: "barbero", // Opcional: asegurarte que solo sean barberos
+      isActive: true
     })
     .populate('site_barber', {name_site: 1}) 
     .select('name last_name phone site_barber role'); 
