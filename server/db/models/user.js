@@ -15,6 +15,17 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
+      required: [true, 'El teléfono es requerido'],
+        unique: true,
+        validate: {
+            // Usamos una expresión regular para verificar que sea exactamente 10 dígitos.
+            // Esto cubre el formato estándar de números móviles en Colombia.
+            validator: function(v) {
+                // Expresión regular: ^ (inicio de la cadena), \d{10} (exactamente 10 dígitos), $ (fin de la cadena)
+                return /^\d{10}$/.test(v);
+            },
+            message: props => `${props.value} no es un número de teléfono válido. El teléfono debe tener exactamente 10 dígitos.`
+        },
       trim: true,
     },
     email: {
