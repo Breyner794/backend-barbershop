@@ -480,7 +480,18 @@ export const deleteUser = async (req, res) => {
 export const superUpdateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, last_name, phone, email, password, role, site_barber, imageUrl, isActive } = req.body;
+    const { name, last_name, phone, email, password, role, site_barber, isActive } = req.body;
+
+    const currentUserId = req.user._id.toString();
+    const userIdToUpdate = id; // **Verificación de seguridad:** Prevenir que un usuario desactive su propia cuenta
+
+    if (userIdToUpdate === currentUserId && isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "No puedes deshabilitar tu propia cuenta. Por favor, contacta a otro superadministrador si necesitas desactivar tu perfil.",
+      });
+    }
 
     const userToUpdate = await User.findById(id);
     if (!userToUpdate) {
