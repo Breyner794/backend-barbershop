@@ -140,7 +140,7 @@ export const getAllUser = async (req, res) => {
     }
 
     const users = await User.find(filters)
-    .populate('site_barber', 'name_site')
+    .populate('site_barber', {name_site :1})
     .limit(limit * 1)
     .skip((page - 1) * limit)
     .sort({ createdAt: -1 });
