@@ -526,16 +526,9 @@ export const superUpdateUser = async (req, res) => {
       userToUpdate.role = role;
       
       if (role === 'barbero') {
-        // Si se cambia a barbero, validar campos requeridos
-        if (!site_barber && !userToUpdate.site_barber) {
-          return res.status(400).json({
-            success: false,
-            message: "El sitio de barbería es requerido para barberos",
-          });
-        }
-        
+
         if (site_barber) {
-          // Verificar que el sitio existe
+          
           const siteExists = await Site.findById(site_barber);
           if (!siteExists) {
             return res.status(404).json({
@@ -543,12 +536,34 @@ export const superUpdateUser = async (req, res) => {
               message: "El sitio de barbería especificado no existe",
             });
           }
+
           userToUpdate.site_barber = site_barber;
         }
-      } else {
+        else {
         // Si se cambia a otro rol, limpiar campos específicos de barbero
         userToUpdate.site_barber = undefined;
       }
+    }else{
+      // Si se cambia a cualquier otro rol, limpiar la sede automáticamente
+      userToUpdate.site_barber = undefined;
+    }
+  } 
+    else if (Object.prototype.hasOwnProperty.call(req.body, 'site_barber')) {
+        if (userToUpdate.role === 'barbero' && site_barber) {
+            // Validar que el sitio exista si se proporciona un ID
+            const siteExists = await Site.findById(site_barber);
+            if (!siteExists) {
+                return res.status(404).json({
+                    success: false,
+                    message: "El sitio de barbería especificado no existe",
+                });
+            }
+            userToUpdate.site_barber = site_barber;
+        } else {
+            userToUpdate.site_barber = undefined;
+        }
+    }
+     
     // --- LÓGICA DE SUBIDA/ELIMINACIÓN DE IMAGEN ---
      if (req.file) {
       console.log(
@@ -594,7 +609,9 @@ export const superUpdateUser = async (req, res) => {
     }
 
     const updatedUser = await userToUpdate.save({ runValidators: true });
-    await updatedUser.populate('site_barber', 'name_site');
+    if (updatedUser.site_barber) {
+      await updatedUser.populate('site_barber', 'name_site');
+    }
 
     res.status(200).json({
       success: true,
