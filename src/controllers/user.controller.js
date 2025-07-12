@@ -234,6 +234,26 @@ export const createUser = async (req, res) => {
          });
        }
 
+       let imageUrl;
+       if (req.file){
+        console.log("Backend (createUser) - Archivo recibido por Multer:", req.file);
+        try{
+          const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
+        {
+          folder: 'barberpro_avatars',
+          transformation: [{ width: 200, height: 200, crop: "fill", gravity: "face" }]
+        })
+        imageUrl = result.secure_url;
+        console.log("Backend (createUser) - Imagen de usuario subida. imageUrl:", imageUrl);
+        }catch (uploadError){
+           console.error("Backend (createUser) - Error al subir la imagen a Cloudinary:", uploadError);
+          return res.status(500).json({
+          success: false,
+          message: 'Error al subir la imagen de perfil. Por favor, intenta de nuevo.'
+        });
+        }
+       };
+
         // --- CREACIÓN DEL USUARIO ---
         const newUser = await User.create({
             name,
@@ -343,27 +363,29 @@ export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     // El admin solo puede cambiar estos campos. No puede cambiar el ROL.
-    const { name, last_name, phone, imageUrl, isActive, site_barber } =
-      req.body;
-    const updateData = {
-      name,
-      last_name,
-      phone,
-      imageUrl,
-      isActive,
-      site_barber,
-    };
-
-    // Prevenir que un admin cambie el rol directamente con esta función
-    if (req.body.role) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message:
-            "Los administradores no pueden cambiar roles desde esta ruta.",
-        });
-    }
+    if(req.file){
+      console.log("Backend (updateUser) - Archivo recibido por Multer:", req.file);
+      try{
+        const result = await cloudinary.uploader.upload(
+          `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
+          {
+            folder: 'barberpro_avatars',
+            transformation: [{ width: 200, height: 200, crop: "fill", gravity: "face" }]
+          }
+        )
+        updateData.imageUrl = result.secure_url
+        console.log("Backend (updateUser) - Nueva imagen subida. imageUrl:", updateData.imageUrl);
+      }catch(uploadError){
+        console.error("Backend (updateUser) - Error al subir la imagen a Cloudinary:", uploadError);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Error al subir la imagen de perfil para el usuario.',
+                });
+      }
+    } else if ('imageUrl' in req.body && req.body.imageUrl === '') {
+            updateData.imageUrl = undefined;
+            console.log("Backend (updateUser) - Solicitud de eliminación de imagen detectada. imageUrl se establecerá a undefined.");
+        }
 
     const updatedUser = await User.findByIdAndUpdate(id, updateData, {
       new: true,
@@ -492,18 +514,48 @@ export const superUpdateUser = async (req, res) => {
         // Si se cambia a otro rol, limpiar campos específicos de barbero
         userToUpdate.site_barber = undefined;
       }
-    } else if (userToUpdate.role === 'barbero') {
-      // Si ya es barbero y se actualizan campos específicos
-      if (site_barber) {
-        const siteExists = await Site.findById(site_barber);
-        if (!siteExists) {
-          return res.status(404).json({
-            success: false,
-            message: "El sitio de barbería especificado no existe",
-          });
-        }
-        userToUpdate.site_barber = site_barber;
+    // --- LÓGICA DE SUBIDA/ELIMINACIÓN DE IMAGEN ---
+     if (req.file) {
+      console.log(
+        "Backend (updateUser) - Archivo recibido por Multer:",
+        req.file
+      );
+      try {
+        const result = await cloudinary.uploader.upload(
+          `data:${req.file.mimetype};base64,${req.file.buffer.toString(
+            "base64"
+          )}`,
+          {
+            folder: "barberpro_avatars",
+            transformation: [
+              { width: 200, height: 200, crop: "fill", gravity: "face" },
+            ],
+          }
+        );
+        userToUpdate.imageUrl = result.secure_url; // CORRECCIÓN del console.log del error anterior:
+        console.log(
+          "Backend (updateUser) - Nueva imagen subida. imageUrl:",
+          userToUpdate.imageUrl
+        );
+      } catch (uploadError) {
+        console.error(
+          "Backend (updateUser) - Error al subir la imagen a Cloudinary:",
+          uploadError
+        );
+        return res.status(500).json({
+          success: false,
+          message: "Error al subir la imagen de perfil para el usuario.",
+        });
       }
+    } else if (
+      Object.prototype.hasOwnProperty.call(req.body, "imageUrl") &&
+      req.body.imageUrl === ""
+    ) {
+      // Lógica para eliminación de imagen
+      userToUpdate.imageUrl = undefined;
+      console.log(
+        "Backend (superUpdateUser) - Solicitud de eliminación de imagen detectada."
+      );
     }
 
     const updatedUser = await userToUpdate.save({ runValidators: true });
