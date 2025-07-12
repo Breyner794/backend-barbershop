@@ -135,6 +135,7 @@ export const getBarbersBySite = async (req, res) => {
       isActive: true
     })
     .populate('site_barber', {name_site: 1}) 
+    .populate('imageUrl')
     .select('name last_name phone site_barber role'); 
 
     if (!barbers) {
