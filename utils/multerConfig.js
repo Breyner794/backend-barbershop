@@ -22,3 +22,5 @@ const upload = multer({
 });
 
 export const uploadUserPhoto = upload.single('photo');
+
+export const uploadServiceImage = upload.single('image_Url');
