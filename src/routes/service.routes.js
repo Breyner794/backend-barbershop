@@ -2,25 +2,27 @@ import express from "express";
 import { protect, restrictTo } from "../controllers/auth.Controller.js";
 import {
   getAllServices,
+  getServicesDashboard,
   getByIdServices,
   createServices,
   updateServices,
   deleteServices,
 } from "../controllers/service.controller.js";
+import { uploadServiceImage } from "../../utils/multerConfig.js";
 
 const router = express.Router();
 
-//Ruta publica para ver los servicios - pagina principal y dashboard
 router.get("/", getAllServices);
+router.get("/dashboard-services", getServicesDashboard)
 router.get("/:id", getByIdServices);
-//Ruta protegida - necesita autenticacion, un login
-//router.use(protect);
 
-//Ruta con permisos de roles seleccionados.
-//router.use(restrictTo('admin', 'superadmin'));
+router.use(protect);
 
-router.post("/", createServices);
-router.put("/:id", updateServices);
-router.delete("/:id", deleteServices);
+router.route("/")
+        .post(restrictTo("admin", "superadmin"),uploadServiceImage, createServices)
+router.route("/:id")
+        .put(restrictTo("admin", "superadmin"),uploadServiceImage, updateServices);
+router.route("/:id")
+        .delete(restrictTo("admin", "superadmin"), deleteServices);
 
 export default router;
