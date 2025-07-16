@@ -4,6 +4,7 @@ import {
   createSite,
   deleteSite,
   getAllSite,
+  getSiteDashboard,
   getByIdSite,
   updateSite,
   getBarbersBySite
@@ -12,15 +13,19 @@ import {
 const router = express.Router();
 
 router.get("/", getAllSite);
+router.get("/site/dashboard", getSiteDashboard);
 
-//router.use(protect);
-
-//router.use(restrictTo('admin','superadmin'));
+router.use(protect);
 
 router.get("/:id", getByIdSite);
 router.get('/:siteId/barbers', getBarbersBySite);
-router.post("/", createSite);
-router.put("/:id", updateSite);
+
+router.route("/")
+        .post(restrictTo("admin", "superadmin"), createSite);
+
+router.route("/:id")
+        .put(restrictTo("admin", "superadmin"), updateSite)
+
 router.delete("/:id", deleteSite);
 
 export default router;
