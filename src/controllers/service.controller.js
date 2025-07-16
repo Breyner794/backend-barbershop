@@ -2,6 +2,33 @@ import Service from "../../server/db/models/Service.js";
 
 export const getAllServices = async (req, res) => {
   try {
+    const services = await Service.find(
+      {isActive : true}
+    ).sort({ createdAt: -1 });
+
+    if (services.length === 0) {
+      return res.status(200).json({
+        success: false,
+        message: "No hay servicios creados en este momento 🔎.",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      count: services.length,
+      data: services,
+      message: "Servicios recuperados exitosamente ✅.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error interno del servidor",
+      error: error.message,
+    });
+  }
+};
+
+export const getServicesDashboard = async (req, res) => {
+  try {
     const services = await Service.find().sort({ createdAt: -1 });
 
     if (services.length === 0) {
