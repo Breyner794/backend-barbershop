@@ -5,10 +5,38 @@ import User from "../../server/db/models/user.js";
 
 export const getAllSite = async (req, res) => {
   try {
-    const site = await Site.find().sort({ createdAt: -1 });
+    const site = await Site.find({
+      isActive: true
+    }).sort({ createdAt: -1 });
 
     if (site.length === 0) {
-      return res.status(400).json({
+      return res.status(200).json({
+        success: false,
+        message: "No hay sedes creados en este momento 🔎.",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      count: site.length,
+      data: site,
+      message: "Sedes recuperados exitosamente ✅.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error General",
+      error: error.message,
+    });
+  }
+};
+
+export const getSiteDashboard = async (req, res) => {
+  try {
+    const site = await Site.find().sort({ createdAt: -1 })
+    .populate("name_site");
+
+    if (site.length === 0) {
+      return res.status(200).json({
         success: false,
         message: "No hay sedes creados en este momento 🔎.",
       });
