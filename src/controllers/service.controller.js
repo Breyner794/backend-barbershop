@@ -219,13 +219,23 @@ export const updateServices = async (req, res) => {
 export const deleteServices = async (req, res) => {
   try {
     const { id } = req.params;
+
+      const serviceToDelete = await Service.findById(id);
+
+      if(!serviceToDelete){
+        return res.status(404).json({ message: "Servicio no encontrado. ❌" });
+      }
+
+      if(serviceToDelete.image_Url){
+        const publicId = getPublicIdFromUrl(serviceToDelete.image_Url);
+        if(publicId){
+          console.log("Eliminando imagen de servicio de Cloudinary:", publicId);
+          await cloudinary.uploader.destroy(publicId);
+        }
+      }
+
     const deleteServices = await Service.findByIdAndDelete(id);
 
-    if (!deleteServices) {
-      return res.status(404).json({
-        message: "Servicio no encontrado. ❌",
-      });
-    }
     res.status(200).json({
       data: deleteServices,
       message: "Servicio eliminado correctamente ♻️",
