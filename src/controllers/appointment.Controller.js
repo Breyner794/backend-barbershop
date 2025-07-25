@@ -501,25 +501,18 @@ export const getAppointmentByConfirmationDetails = async (req, res) => {
 };
 
 export const updateAppointmentStatus = async (req, res) => {
-  const { appointmentId } = req.params;
   const { status, notes } = req.body; // 'notes' podría ser para una razón de cancelación o comentario al completar
 
   try {
-    // 1. Validar que el appointmentId sea un ObjectId válido
-    if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
-      return res.status(400).json({
-        success: false,
-        message: "El ID de la reserva proporcionado no es válido.",
-      });
-    }
 
-    // 2. Validar el nuevo estado
+    const appointment = req.appointment;
+    
     const allowedStatuses = [
       "pendiente",
       "confirmada",
       "completada",
       "cancelada",
-      "no-asistió",
+      "no-asistio",
     ];
     if (!status || !allowedStatuses.includes(status)) {
       return res.status(400).json({
@@ -527,16 +520,6 @@ export const updateAppointmentStatus = async (req, res) => {
         message: `Estado no válido. Los estados permitidos son: ${allowedStatuses.join(
           ", "
         )}.`,
-      });
-    }
-
-    // 3. Buscar la reserva
-    const appointment = await Appointment.findById(appointmentId);
-
-    if (!appointment) {
-      return res.status(404).json({
-        success: false,
-        message: "Reserva no encontrada.",
       });
     }
 
@@ -553,13 +536,13 @@ export const updateAppointmentStatus = async (req, res) => {
       });
     }
 
-    // 5. Actualizar los campos
     appointment.status = status;
-    if (notes !== undefined) {
-      // Solo actualizar notas si se proporcionan
+    if (status === 'cancelada' && req.user.role === 'barbero' && !notes) {
+      // Si un barbero cancela y no hay una nota específica, añade una por defecto.
+      appointment.notes = 'Cancelada por decisión del barbero.';
+    } else if (notes !== undefined) {
       appointment.notes = notes;
     }
-    // Podrías querer actualizar un campo como `updatedAt: new Date()` si lo tienes en tu schema.
 
     await appointment.save();
 
