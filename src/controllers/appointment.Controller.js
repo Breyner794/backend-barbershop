@@ -716,3 +716,236 @@ export const updateAppointmentDetails = async (req, res) => {
     });
   }
 };
+
+// export const updateAppointment = async (req, res) => {
+//   const { appointmentId } = req.params;
+//   const updates = req.body;
+//   const { userId, role } = req.user;
+
+//   try {
+//     if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "ID de reserva no válido." });
+//     }
+
+//     const appointment = await Appointment.findById(appointmentId);
+//     if (!appointment) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Reserva no encontrada." });
+//     }
+
+//     if (role === "barbero" && appointment.barberId.toString() !== userId) {
+//       return res
+//         .status(403)
+//         .json({
+//           success: false,
+//           message: "No tienes permiso para editar esta reserva.",
+//         });
+//     }
+
+//     // --- VALIDACIÓN DE CONFLICTO (si se está cambiando el horario) ---
+//     const isReschedule = updates.date || updates.startTime || updates.barberId;
+
+//     if (isReschedule) {
+//       const newBarberId = updates.barberId || appointment.barberId;
+//       const newDate =
+//         updates.date || appointment.date.toISOString().split("T")[0];
+//       const newStartTime = updates.startTime || appointment.startTime;
+//       const newEndTime = updates.endTime || appointment.endTime;
+
+//       const newDateObject = new Date(newDate + "T00:00:00.000Z");
+
+//       const conflictingAppointment = await Appointment.findOne({
+//         barberId: newBarberId,
+//         date: newDateObject,
+//         _id: { $ne: appointmentId }, // Excluimos la cita actual
+//         status: { $nin: ["cancelada", "no-asistio"] },
+//         // La misma lógica de solapamiento que ya usas y funciona
+//         startTime: { $lt: newEndTime },
+//         endTime: { $gt: newStartTime },
+//       });
+
+//       if (conflictingAppointment) {
+//         return res
+//           .status(409)
+//           .json({
+//             success: false,
+//             message: `El horario de ${newStartTime} a ${newEndTime} ya no está disponible.`,
+//           });
+//       }
+//     }
+
+//     // --- APLICAR ACTUALIZACIONES ---
+//     Object.keys(updates).forEach((key) => {
+//       if (role === "barbero" && (key === "barberId" || key === "siteId")) {
+//         return;
+//       }
+//       appointment[key] = updates[key];
+//     });
+
+//     const updatedAppointment = await appointment.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Reserva actualizada con éxito.",
+//       data: updatedAppointment,
+//     });
+//   } catch (error) {
+//     console.error("Error en updateAppointment:", error);
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Error interno del servidor." });
+//   }
+// };
+ 
+export const updateAppointment = async (req, res) => {
+  const { appointmentId } = req.params;
+  const updates = req.body; // El cuerpo ahora contendrá SOLO los campos a actualizar
+  const { role } = req.user;
+  const userId = req.user._id;
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "ID de reserva no válido." });
+    }
+
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Reserva no encontrada." });
+    }
+
+    let hasPermission = false;
+    if (role === 'admin' || role === 'superadmin') {
+      hasPermission = true;
+    } else if (role === 'barbero') {
+      if (appointment.barberId && userId) {
+        if (appointment.barberId.equals(userId)) {
+          hasPermission = true;
+        }
+      }
+    }
+
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: "No tienes los permisos necesarios para editar esta reserva.",
+      });
+    }
+
+    // Determinar si se está intentando reagendar la cita (cambio de barbero, fecha o hora)
+    const wantsToReschedule = 
+        updates.barberId !== undefined || // Se envió barberId (podría ser el mismo o diferente)
+        updates.date !== undefined ||     // Se envió date
+        updates.startTime !== undefined;  // Se envió startTime
+
+    // Preparamos los valores para la validación de conflicto si es un reagendamiento
+    let newBarberId = appointment.barberId;
+    let newDate = appointment.date.toISOString().split("T")[0]; // Fecha original como string 'YYYY-MM-DD'
+    let newStartTime = appointment.startTime;
+    let newEndTime = appointment.endTime;
+
+    if (wantsToReschedule) {
+      // Usar los valores nuevos si se proporcionan, si no, mantener los originales
+      newBarberId = updates.barberId !== undefined ? updates.barberId : appointment.barberId;
+      newDate = updates.date !== undefined ? updates.date : appointment.date.toISOString().split("T")[0];
+      newStartTime = updates.startTime !== undefined ? updates.startTime : appointment.startTime;
+      newEndTime = updates.endTime !== undefined ? updates.endTime : appointment.endTime; // ✨ CLAVE: Usar updates.endTime si viene!
+
+      // Si el `barberId`, `date` o `startTime` han cambiado respecto a la cita original,
+      // O si el `barberId`, `date` y `startTime` son los mismos, pero `endTime` ha cambiado (esto no debería pasar desde el frontend si un slot es fijo)
+      // ENTONCES, validamos el conflicto.
+      const hasActuallyChangedTimeSlot = 
+          newBarberId.toString() !== appointment.barberId.toString() ||
+          newDate !== appointment.date.toISOString().split("T")[0] ||
+          newStartTime !== appointment.startTime;
+
+      if (hasActuallyChangedTimeSlot) {
+        // Validación de conflicto solo si realmente hay un cambio en el slot
+        const { startOfDay, endOfDay } = getDateRangeInColombia(newDate);
+
+        console.log(`🔄 Validando conflicto para reagendamiento:`);
+        console.log(`   📅 Nueva fecha: ${newDate}`);
+        console.log(`   🕐 Nuevo horario: ${newStartTime} - ${newEndTime}`);
+        console.log(`   📅 Rango UTC búsqueda: ${startOfDay.toISOString()} - ${endOfDay.toISOString()}`);
+        
+        const conflictingAppointment = await Appointment.findOne({
+          barberId: newBarberId,
+          date: {
+            $gte: startOfDay,
+            $lt: endOfDay
+          },
+          _id: { $ne: appointmentId }, // Excluimos la cita actual que estamos editando
+          status: { $nin: ["cancelada", "no-asistio", "completada"] }, // Excluir estados que no bloquean
+          // Lógica de superposición de tiempo (intervalos se solapan)
+          $or: [
+            { // Nuevo intervalo empieza dentro de un slot existente
+                startTime: { $lt: newEndTime },
+                endTime: { $gt: newStartTime }
+            }
+          ]
+        });
+
+        if (conflictingAppointment) {
+          console.log(`❌ Conflicto encontrado con cita: ${conflictingAppointment._id}`);
+          console.log(`   🕐 Horario conflictivo: ${conflictingAppointment.startTime} - ${conflictingAppointment.endTime}`);
+          console.log(`   📅 Fecha conflictiva: ${conflictingAppointment.date.toISOString()}`);
+
+          return res
+            .status(409)
+            .json({
+              success: false,
+              message: `El horario de ${newStartTime} a ${newEndTime} ya no está disponible para el barbero seleccionado.`,
+            });
+        }
+        console.log(`✅ No hay conflictos, reagendamiento válido`);
+      }
+
+      // Si se cambió la fecha, asegúrate de que se guarde correctamente como Date
+      if (updates.date) {
+        updates.date = getDateRangeInColombia(updates.date).startOfDay;
+      }
+      // Asegurarse de que startTime y endTime también se actualicen en `updates`
+      // Esto es crucial para que `Object.keys(updates).forEach` los aplique.
+      updates.startTime = newStartTime;
+      updates.endTime = newEndTime;
+      updates.barberId = newBarberId; // Asegurarse que el barberId final se use si fue actualizado
+    }
+    
+    // --- APLICAR ACTUALIZACIONES ---
+    Object.keys(updates).forEach((key) => {
+      // Bloquear cambios de barberId o siteId para barberos (si es necesario)
+      // Esta lógica de permiso ya la manejas arriba, pero aquí es para evitar que se pisen los updates
+      if (role === "barbero" && (key === "barberId" || key === "siteId")) {
+        // Si el barbero intenta cambiar su propio barberId o siteId, lo ignoramos
+        // Aunque ya lo filtraste al principio al establecer newBarberId.
+        // Quizás es mejor quitar esto y confiar en la lógica de `newBarberId`
+        // o si es que quieres que un barbero NO PUEDA enviar esos campos en el body
+        return; 
+      }
+      appointment[key] = updates[key];
+    });
+
+    const updatedAppointment = await appointment.save();
+
+    console.log(`✅ Reserva ${appointmentId} actualizada exitosamente`);
+    console.log(`   📅 Fecha final almacenada: ${updatedAppointment.date.toISOString()}`);
+    console.log(`   🕐 Horario final: ${updatedAppointment.startTime} - ${updatedAppointment.endTime}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Reserva actualizada con éxito.",
+      data: updatedAppointment,
+    });
+  } catch (error) {
+    console.error("❌ Error en updateAppointment:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error interno del servidor." });
+  }
+};
