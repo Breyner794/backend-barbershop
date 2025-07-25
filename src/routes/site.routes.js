@@ -7,7 +7,8 @@ import {
   getSiteDashboard,
   getByIdSite,
   updateSite,
-  getBarbersBySite
+  getBarbersBySite,
+  getActiveSitesCount
 } from "../controllers/site.controller.js";
 
 const router = express.Router();
@@ -17,6 +18,8 @@ router.get("/site/dashboard", getSiteDashboard);
 
 router.use(protect);
 
+router.get("/site/dashboard", getSiteDashboard);
+router.get('/active-count', getActiveSitesCount);
 router.get("/:id", getByIdSite);
 router.get('/:siteId/barbers', getBarbersBySite);
 

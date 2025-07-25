@@ -188,3 +188,14 @@ export const getBarbersBySite = async (req, res) => {
     });
   }
 };
+
+export const getActiveSitesCount = async (req, res) => {
+    try {
+        // Asumiendo que tienes un campo 'isActive: true' en tu modelo Site
+        const count = await Site.countDocuments({ isActive: true }); 
+        res.status(200).json({ success: true, count });
+    } catch (error) {
+        console.error('Error fetching active sites count:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
