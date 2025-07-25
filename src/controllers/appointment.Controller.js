@@ -166,6 +166,204 @@ export const getAvailableSlotsForBooking = async (req, res) => {
         });
   }
 };
+// export const getAvailableSlotsForBooking = async (req, res) => {
+//   const { barberId, date } = req.query;
+
+//   try {
+//     if (!barberId || !date) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Los parametros BarberId, Date y servicesId, son requeridos.",
+//       });
+//     }
+    
+//     const effectiveAvailability = await getEffectiveAvailability(
+//       barberId,
+//       date
+//     );
+
+//     // 3. Verificamos si, según la fuente de verdad, el barbero trabaja.
+//     if (
+//       !effectiveAvailability.isWorkingDay ||
+//       effectiveAvailability.timeSlots === 0
+//     ) {
+//       return res.status(200).json({
+//         success: true,
+//         data: [],
+//         message: "El barbero no tiene horarios disponibles para esta fecha.",
+//         source: effectiveAvailability.source, // Dato útil para debug
+//       });
+//     }
+
+//     // 4. Si trabaja, usamos SUS horarios para el resto del proceso.
+//     const workingTimeSlots = effectiveAvailability.timeSlots;
+
+//     // 5. El resto de tu código para consultar citas y filtrar es casi idéntico.
+//     const appointmentsOnDate = await Appointment.find({
+//       barberId,
+//       date: new Date(date + "T00:00:00"),
+//       status: { $nin: ["cancelada", "no-asistio"] },
+//     });
+
+//     const availabilitySlots = workingTimeSlots.filter((slot) => {
+//       const slotStartMinutes = timeToMinutes(slot.startTime);
+//       const slotEndMinutes = timeToMinutes(slot.endTime);
+
+//       const isOccupied = appointmentsOnDate.some((appointment) => {
+//         const appointmentStartMinutes = timeToMinutes(appointment.startTime);
+//         const appointmentEndMinutes = timeToMinutes(appointment.endTime);
+//         return (
+//           appointmentStartMinutes < slotEndMinutes &&
+//           appointmentEndMinutes > slotStartMinutes
+//         );
+//       });
+//       return !isOccupied;
+//     });
+
+//     if (availabilitySlots.length === 0) {
+//       return res.status(200).json({
+//         success: true,
+//         data: [],
+//         message:
+//           "No hay horarios disponibles para esta fecha, todos están ocupados.",
+//       });
+//     }
+
+//      return res.status(200).json({
+//             success: true,
+//             message: "Horarios disponibles recuperados con éxito ✅",
+//             data: availabilitySlots,
+//         });
+//   } catch (err) {
+//     console.error("Error en getAvailableSlotsForBooking:", err);
+//     res.status(500).json({
+//             success: false,
+//             message: "Error interno del servidor al obtener los horarios disponibles.",
+//             error: err.message,
+//         });
+//   }
+// };
+
+// export const createAppointment = async (req, res) => {
+//   const {
+//     barberId,
+//     serviceId,
+//     siteId,
+//     date: dateString,
+//     startTime,
+//     endTime,
+//     clientName,
+//     clientPhone,
+//     clientEmail,
+//     notes,
+//   } = req.body;
+
+//   try {
+//     if (
+//       !barberId ||
+//       !serviceId ||
+//       !siteId ||
+//       !dateString ||
+//       !startTime ||
+//       !endTime ||
+//       !clientName ||
+//       !clientPhone
+//     ) {
+//       return res.status(400).json({
+//         success: false,
+//         message:
+//           "Faltan campos obligatorios (incluyendo endTime) para crear la reserva.",
+//       });
+//     }
+
+//     // (formato para dateString, startTime, email y phone validar si es necesario las validaciones de los campos.)
+//     if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "La hora de fin debe ser posterior a la hora de inicio.",
+//       });
+//     }
+
+//     const service = await Service.findById(serviceId);
+//     if (!service) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Servicio no encontrado." });
+//     }
+
+//     /*PROBABILIDAD DE CREAR UN FUNCION QUE VERIFIQUE LAS FECHAS DISPONIBLES...
+//         LA IDE ES QUE EN EL FRONTEND LAS MUESTRE PERO QUEDA PRENDIENTE...*/
+
+//     /*Validar esta funcuino de appointmentDateObject*/
+//     const appointmentDateObject = new Date(dateString + "T00:00:00");
+
+//     const conflictingAppointment = await Appointment.findOne({
+//       barberId,
+//       date: appointmentDateObject,
+//       status: { $nin: ["cancelada", "no-asistio"] },
+//       $or: [
+//         // Lógica de solapamiento: NuevaCita.start < Existente.end && NuevaCita.end > Existente.start
+//         { startTime: { $lt: endTime }, endTime: { $gt: startTime } }, //solapamiento parcial o total
+//         { startTime: { $lt: endTime, $gte: startTime } }, // Cita existente comienza dentro o al mismo tiempo
+//         { endTime: { $gt: startTime, $lte: endTime } }, // Cita existente termina dentro o al mismo tiempo
+//       ],
+//     });
+//     // La lógica de solapamiento original `(A.start < B.end) && (A.end > B.start)` es generalmente buena.
+//     // El `startTime: { $lt: endTime }` se refiere al `startTime` de una cita existente comparado con el `endTime` de la nueva.
+//     // El `endTime: { $gt: startTime }` se refiere al `endTime` de una cita existente comparado con el `startTime` de la nueva.
+
+//     if (conflictingAppointment) {
+//       return res.status(409).json({
+//         // 409 Conflict
+//         success: false,
+//         message:
+//           "Lo sentimos, este horario acaba de ser reservado. Por favor, elige otro.",
+//       });
+//     }
+
+//     const newAppointment = new Appointment({
+//       barberId,
+//       serviceId,
+//       siteId,
+//       date: appointmentDateObject,
+//       startTime,
+//       endTime,
+//       clientName,
+//       clientPhone,
+//       clientEmail,
+//       notes,
+//       status: "pendiente",
+//     });
+
+//     newAppointment.confirmationCode = nanoid(8); //hacer pruebas de pasar este codigo a mayus con .upperCase
+
+//     await newAppointment.save();
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Reserva creada con éxito. ✅",
+//       data: newAppointment,
+//     });
+//   } catch (error) {
+//     console.error("Error en createAppointment:", error);
+//     if (error.name === "ValidationError") {
+//       // Errores de validación de Mongoose (definidos en tu Schema)
+//       const messages = Object.values(error.errors).map((err) => err.message);
+//       return res
+//         .status(400)
+//         .json({
+//           success: false,
+//           message: "Error de validación.",
+//           errors: messages,
+//         });
+//     }
+//     res.status(500).json({
+//       success: false,
+//       message: "Error interno del servidor al crear la reserva.",
+//       error: error.message,
+//     });
+//   }
+// };
 
 export const createAppointment = async (req, res) => {
   const {
