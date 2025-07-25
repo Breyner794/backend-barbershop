@@ -480,7 +480,7 @@ export const createAppointment = async (req, res) => {
 
     // 🔧 CORRECCIÓN: Usar el manejo correcto de zona horaria
     const { startOfDay, endOfDay } = getDateRangeInColombia(dateString);
-
+    
     console.log(`📅 Creando nueva cita para ${dateString}:`);
     console.log(`   🕐 Horario solicitado: ${startTime} - ${endTime}`);
     console.log(`   📅 Rango búsqueda UTC: ${startOfDay.toISOString()} - ${endOfDay.toISOString()}`);
