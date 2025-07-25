@@ -949,3 +949,77 @@ export const updateAppointment = async (req, res) => {
       .json({ success: false, message: "Error interno del servidor." });
   }
 };
+
+export const deleteAppointment = async (req, res) => {
+  const { appointmentId } = req.params; // ID de la cita a cancelar/eliminar
+  const { cancellationReason } = req.body; // La razón de cancelación (opcional, solo para barberos)
+
+  // Asumiendo que `req.user` es poblado por tu middleware `protect`
+  const { role, _id: userId } = req.user; 
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(appointmentId)) {
+      return res.status(400).json({ success: false, message: "ID de reserva no válido." });
+    }
+
+    const appointment = await Appointment.findById(appointmentId);
+
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: "Cita no encontrada." });
+    }
+
+    // --- Lógica de Autorización ---
+    let canPerformAction = false;
+    if (role === 'admin' || role === 'superadmin') { // Los roles pueden ser 'superadmin' o 'super-admin' según tu implementación
+      canPerformAction = true; // Admin/SuperAdmin pueden eliminar/cancelar cualquier cita
+    } else if (role === 'barbero') {
+      // El barbero solo puede cancelar sus propias citas
+      if (appointment.barberId && appointment.barberId.equals(userId)) {
+        canPerformAction = true;
+      }
+    }
+
+    if (!canPerformAction) {
+      return res.status(403).json({ success: false, message: "No tienes los permisos para realizar esta acción sobre esta cita." });
+    }
+
+    // --- Lógica de la Acción (Cancelación vs. Eliminación Forzada) ---
+    if (role === 'barbero') {
+      // Si es un barbero, cambiamos el estado a 'cancelada'
+      if (!cancellationReason || cancellationReason.trim() === '') {
+        return res.status(400).json({ success: false, message: "La razón de cancelación es obligatoria para los barberos." });
+      }
+
+      // Añadir la razón de cancelación a las notas existentes o crearlas
+      const existingNotes = appointment.notes ? `${appointment.notes}\n` : '';
+      appointment.notes = `${existingNotes}Cancelado por barbero (ID: ${userId}): ${cancellationReason} (Fecha: ${new Date().toLocaleString('es-CO')})`;
+      appointment.status = 'cancelada';
+
+      await appointment.save();
+
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Cita cancelada exitosamente por el barbero.', 
+        data: appointment 
+      });
+
+    } else if (role === 'admin' || role === 'superadmin') {
+      // Si es un admin o super-admin, eliminamos la cita permanentemente
+      await Appointment.deleteOne({ _id: appointmentId }); // O usa findByIdAndDelete(appointmentId);
+
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Cita eliminada permanentemente por el administrador.' 
+      });
+
+    } else {
+      // Este caso debería ser atrapado por `canPerformAction` antes, pero como fallback
+      return res.status(403).json({ success: false, message: "Rol no autorizado para esta acción." });
+    }
+
+  } catch (error) {
+    console.error("❌ Error en deleteAppointment:", error);
+    return res.status(500).json({ success: false, message: "Error interno del servidor al procesar la cita." });
+  }
+};
+
