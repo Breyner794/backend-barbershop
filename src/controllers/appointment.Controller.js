@@ -1256,3 +1256,61 @@ export const deleteAppointment = async (req, res) => {
   }
 };
 
+// --- NUEVA FUNCIÓN: Obtener Citas Próximas para el Dashboard ---
+export const getUpcomingAppointmentsForDashboard = async (req, res) => {
+    try {
+        const { barberId, limit = 5 } = req.query; // Recibe barberId si es un barbero, y un límite opcional
+
+        const todayFormatted = format(new Date(), 'yyyy-MM-dd');
+        const { startOfDay: startOfTodayUTC } = getDateRangeInColombia(todayFormatted);
+
+        let query = {
+            // Citas a partir de hoy (incluido hoy)
+            date: { $gte: startOfTodayUTC },
+            // Solo citas pendientes o confirmadas
+            status: { $in: ["pendiente", "confirmada"] }
+        };
+
+        if (barberId && mongoose.Types.ObjectId.isValid(barberId)) {
+            query.barberId = new mongoose.Types.ObjectId(barberId);
+        } else if (barberId) {
+            // Si se proporciona un barberId inválido, devolver un error o un array vacío
+            return res.status(400).json({
+                success: false,
+                message: "El ID del barbero proporcionado no es válido.",
+                data: []
+            });
+        }
+
+        const appointments = await Appointment.find(query)
+            .populate('barberId', 'name last_name') // Trae el 'name' y 'last_name' del barbero
+            .populate('serviceId', 'name price') // Trae 'name' y 'price' del servicio
+            .populate('siteId', 'name_site') // Trae el 'name' de la sede
+            .sort({ date: 1, startTime: 1 }) // Ordena por fecha ascendente y luego por hora de inicio
+            .limit(parseInt(limit)) // Limita el número de resultados
+            .lean(); // Devuelve objetos JS planos para mejor rendimiento
+
+        if (appointments.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No se encontraron citas próximas.",
+                data: []
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Citas próximas recuperadas con éxito. ✅",
+            count: appointments.length,
+            data: appointments
+        });
+
+    } catch (error) {
+        console.error("Error en getUpcomingAppointmentsForDashboard:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno del servidor al obtener las citas próximas.",
+            error: error.message
+        });
+    }
+};
