@@ -244,6 +244,71 @@ export const getAvailableSlotsForBooking = async (req, res) => {
 //   }
 // };
 
+export const creacteCompletedService = async (req, res) => {
+  const {
+    barberId,
+    serviceId,
+    siteId,
+    clientName,
+    clientPhone,
+    clientEmail,
+    startTime,
+    notes
+  } = req.body;
+
+  try{
+    if (!barberId || !serviceId || !siteId || !clientName || !startTime){
+      return res.status(400).json({ success: false, message: "Faltan campos obligatorios para registrar el servicio." });
+    }
+    const TIMEZONE = 'America/Bogota';
+    const todayString = format(new Date(), 'yyyy-MM-dd', { timeZone: TIMEZONE });
+
+    const appointmentDateObject = createColombianDate(todayString);
+
+    const service = await Service.findById(serviceId);
+    if (!service || !service.duration) {
+      return res.status(404).json({ success: false, message: "Servicio no encontrado o no tiene una duración definida." });
+    }
+
+    const startTimeInMinutes = timeToMinutes(startTime);
+    const endTimeInMinutes = startTimeInMinutes + service.duration;
+    const endHours = Math.floor(endTimeInMinutes / 60);
+    const endMinutes = endTimeInMinutes % 60;
+    const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+
+    const newServiceRecord = new Appointment({
+      barberId,
+      serviceId,
+      siteId,
+      date: appointmentDateObject,
+      startTime,
+      endTime, 
+      clientName,
+      clientPhone,
+      notes,
+      status: "completada",
+      isWalkIn: true,
+      completedAt: new Date(),
+      confirmationCode: `WALKIN_${nanoid(8)}`
+    });
+
+    await newServiceRecord.save();
+
+    return res.status(201).json({
+      success: true,
+      message: `Servicio para "${clientName}" registrado con éxito para hoy, ${todayString}.`,
+      data: newServiceRecord
+    });
+
+  }catch (error){
+    console.error("Error en createCompletedService:", error);
+    if (error.name === "ValidationError") {
+        return res.status(400).json({ success: false, message: "Error de validación.", error: error.message });
+    }
+    res.status(500).json({ success: false, message: "Error interno del servidor.", error: error.message });
+  }
+}
+
 // export const createAppointment = async (req, res) => {
 //   const {
 //     barberId,
