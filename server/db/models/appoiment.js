@@ -35,23 +35,39 @@ const appointmentSchema = new mongoose.Schema({
   },
   clientPhone: {
     type: String,
-    required: true
+    required: [true, 'El teléfono es requerido'],
+    validate: {
+            // Usamos una expresión regular para verificar que sea exactamente 10 dígitos.
+            // Esto cubre el formato estándar de números móviles en Colombia.
+            validator: function(v) {
+                // Expresión regular: ^ (inicio de la cadena), \d{10} (exactamente 10 dígitos), $ (fin de la cadena)
+                return /^\d{10}$/.test(v);
+            },
+            message: props => `${props.value} no es un número de teléfono válido. El teléfono debe tener exactamente 10 dígitos.`
+        },
+      trim: true,
   },
   clientEmail: String,
   notes: String,
   confirmationCode: {
     type: String,
-    unique: true
+    unique: true,
+    sparse: true
   },
   status: {
     type: String,
-    enum: ["pendiente", "confirmada", "completada", "cancelada", "no-asistió"],
+    enum: ["pendiente", "confirmada", "completada", "cancelada", "no-asistio"],
     default: "pendiente"
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  isWalkIn: { // Para identificar registros manuales/sin cita
+    type: Boolean,
+    default: false 
+  },
+  completedAt: { // Fecha y hora exactas en que se marcó como completado
+    type: Date 
+  },
+},{
+  timestamps: true
 });
 
 const Appointment = mongoose.model('Appointment', appointmentSchema);
