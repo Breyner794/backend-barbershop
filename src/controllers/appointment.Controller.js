@@ -18,118 +18,26 @@ export const timeToMinutes = (time) => {
 //   return date.getDay();
 // };
 
-// export const getAvailableSlotsForBooking = async (req, res) => {
-//   const { barberId, date} = req.query;
+export const createColombianDate = (dateString) => {
+  // Crear fecha en Colombia (UTC-5)
+  const colombiaOffset = -5 * 60; // Colombia es UTC-5 (en minutos)
+  const date = new Date(dateString + "T00:00:00");
+  
+  // Ajustar por la diferencia de zona horaria
+  const utcDate = new Date(date.getTime() - (colombiaOffset * 60 * 1000));
+  return utcDate;
+};
 
-//   try {
-//     //Validacion de entradas
-//     if (!barberId || !date /*|| !serviceId*/) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Los parametros BarberId, y Date , son requeridos.",
-//       });
-//     }
-
-//     //Determinar la disponibilidad base de barbero
-//     let workingTimeSlots = [];
-//     let barberIsWorking = false;
-//     let usingException = false;
-
-//     // 1. Verificar si hay excepción de disponibilidad  
-//     const exceptionAvailability = await Availabilityexception.findOne({
-//       barberId,
-//       date,
-//     });
-
-//     // 2. Solo usar la excepción si está configurada para trabajar
-//     if (
-//       exceptionAvailability &&
-//       exceptionAvailability.isWorkingDay &&
-//       exceptionAvailability.timeSlots.length > 0
-//     ) {
-//       console.log(
-//         "🔄 Usando excepción de disponibilidad:",
-//         exceptionAvailability
-//       );
-//       workingTimeSlots = exceptionAvailability.timeSlots;
-//       barberIsWorking = true;
-//       usingException = true;
-//     }
-
-//     // 3. Si no hay excepción válida para trabajar, usar disponibilidad semanal
-//     if (!usingException) {
-//       const dayOfWeek = getDayOfWeek(date);
-//       console.log(`📅 Día de la semana: ${dayOfWeek} para fecha ${date}`);
-
-//       const weeklyAvailability = await Availabilitybarber.findOne({
-//         barberId,
-//         dayOfWeek,
-//       });
-
-//       if (
-//         weeklyAvailability &&
-//         weeklyAvailability.isWorkingDay &&
-//         weeklyAvailability.timeSlots.length > 0
-//       ) {
-//         console.log("📋 Usando disponibilidad semanal:", weeklyAvailability);
-//         workingTimeSlots = weeklyAvailability.timeSlots;
-//         barberIsWorking = true;
-//       } else {
-//         barberIsWorking = false;
-//       }
-//     }
-
-//     /*Consultar Citas Existentes Para la consulta de citas, es importante que el campo 'date' en la BD
-//          y el 'date' de la query se manejen consistentemente (ej. ambos como Date a medianoche UTC o similar)*/
-
-//     const appointmentsOnDate = await Appointment.find({
-//       barberId,
-//       date: new Date(date + "T00:00:00"),
-//       status: { $nin: ["cancelada", "no-asistió"] }, // Excluir citas que no bloquean tiempo
-//     });
-
-//     //filtrar slots ocupados
-//     const availabilitySlots = workingTimeSlots.filter((slot) => {
-//       const slotStartMinutes = timeToMinutes(slot.startTime);
-//       const slotEndMinutes = timeToMinutes(slot.endTime);
-
-//       const isOccupied = appointmentsOnDate.some((appointment) => {
-//         const appointmentStartMinutes = timeToMinutes(appointment.startTime);
-//         const appointmentEndMinutes = timeToMinutes(appointment.endTime);
-//         // Lógica de solapamiento: Un slot está ocupado si (InicioCita < FinSlot) Y (FinCita > InicioSlot)
-//         return (
-//           appointmentStartMinutes < slotEndMinutes &&
-//           appointmentEndMinutes > slotStartMinutes
-//         );
-//       });
-
-//       return !isOccupied; // Mantener el slot solo si NO está ocupado
-//     });
-
-//     if (availabilitySlots.length === 0) {
-//       return res.status(200).json({
-//         success: true,
-//         data: [],
-//         message:
-//           "No hay horarios disponibles para esta fecha, todos estan ocupados o no hay configuracion",
-//       });
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Horarios disponibles recuperados con exito ✅",
-//       data: availabilitySlots, // Podria devolver solo .map(slot => slot.startTime) prueba opcional...
-//     });
-//   } catch (error) {
-//     console.error("Error en getAvailableSlotsForBooking:", error);
-//     res.status(500).json({
-//       success: false,
-//       message:
-//         "Error interno del servidor al obtener los horarios disponibles.",
-//       error: error.message,
-//     });
-//   }
-// };
+export const getDateRangeInColombia = (dateString) => {
+  // Inicio del día en Colombia
+  const startOfDay = createColombianDate(dateString);
+  
+  // Final del día en Colombia (23:59:59.999)
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setUTCHours(23, 59, 59, 999);
+  
+  return { startOfDay, endOfDay };
+};
 
 export const getAvailableSlotsForBooking = async (req, res) => {
   const { barberId, date } = req.query;
@@ -142,12 +50,19 @@ export const getAvailableSlotsForBooking = async (req, res) => {
       });
     }
     
+    // Crear rango de fechas en zona horaria de Colombia
+    const { startOfDay, endOfDay } = getDateRangeInColombia(date);
+    
+    console.log(`🕐 Consultando citas para ${date}:`);
+    console.log(`📅 Inicio del día (UTC): ${startOfDay.toISOString()}`);
+    console.log(`📅 Final del día (UTC): ${endOfDay.toISOString()}`);
+    
     const effectiveAvailability = await getEffectiveAvailability(
       barberId,
       date
     );
 
-    // 3. Verificamos si, según la fuente de verdad, el barbero trabaja.
+    // Verificamos si el barbero trabaja
     if (
       !effectiveAvailability.isWorkingDay ||
       effectiveAvailability.timeSlots === 0
@@ -156,19 +71,28 @@ export const getAvailableSlotsForBooking = async (req, res) => {
         success: true,
         data: [],
         message: "El barbero no tiene horarios disponibles para esta fecha.",
-        source: effectiveAvailability.source, // Dato útil para debug
+        source: effectiveAvailability.source,
       });
     }
 
-    // 4. Si trabaja, usamos SUS horarios para el resto del proceso.
     const workingTimeSlots = effectiveAvailability.timeSlots;
 
-    // 5. El resto de tu código para consultar citas y filtrar es casi idéntico.
+    // Consultar citas usando rango de fechas corregido por zona horaria
     const appointmentsOnDate = await Appointment.find({
       barberId,
-      date: new Date(date + "T00:00:00"),
-      status: { $nin: ["cancelada", "no-asistió"] },
+      date: {
+        $gte: startOfDay,
+        $lt: endOfDay
+      },
+      status: { $nin: ["cancelada", "no-asistio"] },
     });
+
+    console.log(`📋 Citas encontradas: ${appointmentsOnDate.length}`);
+    if (appointmentsOnDate.length > 0) {
+      appointmentsOnDate.forEach(apt => {
+        console.log(`   - ${apt.startTime}-${apt.endTime} (${apt.date.toISOString()})`);
+      });
+    }
 
     const availabilitySlots = workingTimeSlots.filter((slot) => {
       const slotStartMinutes = timeToMinutes(slot.startTime);
@@ -189,10 +113,11 @@ export const getAvailableSlotsForBooking = async (req, res) => {
       return res.status(200).json({
         success: true,
         data: [],
-        message:
-          "No hay horarios disponibles para esta fecha, todos están ocupados.",
+        message: "No hay horarios disponibles para esta fecha, todos están ocupados.",
       });
     }
+
+    console.log(`✅ Slots disponibles: ${availabilitySlots.length}`);
 
      return res.status(200).json({
             success: true,
@@ -200,7 +125,7 @@ export const getAvailableSlotsForBooking = async (req, res) => {
             data: availabilitySlots,
         });
   } catch (err) {
-    console.error("Error en getAvailableSlotsForBooking:", err);
+    console.error("❌ Error en getAvailableSlotsForBooking:", err);
     res.status(500).json({
             success: false,
             message: "Error interno del servidor al obtener los horarios disponibles.",
@@ -256,41 +181,45 @@ export const createAppointment = async (req, res) => {
         .json({ success: false, message: "Servicio no encontrado." });
     }
 
-    /*PROBABILIDAD DE CREAR UN FUNCION QUE VERIFIQUE LAS FECHAS DISPONIBLES...
-        LA IDE ES QUE EN EL FRONTEND LAS MUESTRE PERO QUEDA PRENDIENTE...*/
+    // 🔧 CORRECCIÓN: Usar el manejo correcto de zona horaria
+    const { startOfDay, endOfDay } = getDateRangeInColombia(dateString);
 
-    /*Validar esta funcuino de appointmentDateObject*/
-    const appointmentDateObject = new Date(dateString + "T00:00:00");
+    console.log(`📅 Creando nueva cita para ${dateString}:`);
+    console.log(`   🕐 Horario solicitado: ${startTime} - ${endTime}`);
+    console.log(`   📅 Rango búsqueda UTC: ${startOfDay.toISOString()} - ${endOfDay.toISOString()}`);
 
+    // Verificar conflictos con el manejo correcto de zona horaria
     const conflictingAppointment = await Appointment.findOne({
       barberId,
-      date: appointmentDateObject,
+      date: {
+        $gte: startOfDay,
+        $lt: endOfDay
+      },
       status: { $nin: ["cancelada", "no-asistio"] },
-      $or: [
-        // Lógica de solapamiento: NuevaCita.start < Existente.end && NuevaCita.end > Existente.start
-        { startTime: { $lt: endTime }, endTime: { $gt: startTime } }, //solapamiento parcial o total
-        { startTime: { $lt: endTime, $gte: startTime } }, // Cita existente comienza dentro o al mismo tiempo
-        { endTime: { $gt: startTime, $lte: endTime } }, // Cita existente termina dentro o al mismo tiempo
-      ],
+      // Lógica de solapamiento simplificada y más clara
+      startTime: { $lt: endTime },
+      endTime: { $gt: startTime }
     });
-    // La lógica de solapamiento original `(A.start < B.end) && (A.end > B.start)` es generalmente buena.
-    // El `startTime: { $lt: endTime }` se refiere al `startTime` de una cita existente comparado con el `endTime` de la nueva.
-    // El `endTime: { $gt: startTime }` se refiere al `endTime` de una cita existente comparado con el `startTime` de la nueva.
 
     if (conflictingAppointment) {
+      console.log(`❌ Conflicto detectado con cita existente:`);
+      console.log(`   🕐 Cita conflictiva: ${conflictingAppointment.startTime} - ${conflictingAppointment.endTime}`);
+      console.log(`   📅 Fecha cita conflictiva: ${conflictingAppointment.date.toISOString()}`);
+      
       return res.status(409).json({
-        // 409 Conflict
         success: false,
-        message:
-          "Lo sentimos, este horario acaba de ser reservado. Por favor, elige otro.",
+        message: "Lo sentimos, este horario acaba de ser reservado. Por favor, elige otro.",
       });
     }
 
+    console.log(`✅ No hay conflictos, procediendo a crear la cita`);
+
+    // Usar startOfDay para almacenar la fecha (inicio del día en UTC para Colombia)
     const newAppointment = new Appointment({
       barberId,
       serviceId,
       siteId,
-      date: appointmentDateObject,
+      date: startOfDay, // Usar la fecha corregida por zona horaria
       startTime,
       endTime,
       clientName,
@@ -300,9 +229,15 @@ export const createAppointment = async (req, res) => {
       status: "pendiente",
     });
 
-    newAppointment.confirmationCode = nanoid(8); //hacer pruebas de pasar este codigo a mayus con .upperCase
+    // Generar código de confirmación en mayúsculas
+    newAppointment.confirmationCode = nanoid(8).toUpperCase();
 
     await newAppointment.save();
+
+    console.log(`🎉 Cita creada exitosamente:`);
+    console.log(`   🆔 ID: ${newAppointment._id}`);
+    console.log(`   🔑 Código: ${newAppointment.confirmationCode}`);
+    console.log(`   📅 Fecha almacenada: ${newAppointment.date.toISOString()}`);
 
     return res.status(201).json({
       success: true,
@@ -310,9 +245,9 @@ export const createAppointment = async (req, res) => {
       data: newAppointment,
     });
   } catch (error) {
-    console.error("Error en createAppointment:", error);
+    console.error("❌ Error en createAppointment:", error);
     if (error.name === "ValidationError") {
-      // Errores de validación de Mongoose (definidos en tu Schema)
+      // Errores de validación de Mongoose
       const messages = Object.values(error.errors).map((err) => err.message);
       return res
         .status(400)
