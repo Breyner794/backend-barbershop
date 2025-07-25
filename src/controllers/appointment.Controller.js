@@ -152,18 +152,18 @@ export const getAvailableSlotsForBooking = async (req, res) => {
 
     console.log(`✅ Slots disponibles: ${availabilitySlots.length}`);
 
-     return res.status(200).json({
-            success: true,
-            message: "Horarios disponibles recuperados con éxito ✅",
-            data: availabilitySlots,
-        });
+    return res.status(200).json({
+      success: true,
+      message: "Horarios disponibles recuperados con éxito ✅",
+      data: availabilitySlots,
+    });
   } catch (err) {
     console.error("❌ Error en getAvailableSlotsForBooking:", err);
     res.status(500).json({
-            success: false,
-            message: "Error interno del servidor al obtener los horarios disponibles.",
-            error: err.message,
-        });
+      success: false,
+      message: "Error interno del servidor al obtener los horarios disponibles.",
+      error: err.message,
+    });
   }
 };
 
