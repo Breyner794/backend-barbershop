@@ -14,14 +14,13 @@ import {
 const router = express.Router();
 
 router.get("/", getAllSite);
-router.get("/site/dashboard", getSiteDashboard);
+router.get('/:siteId/barbers', getBarbersBySite);
 
 router.use(protect);
 
 router.get("/site/dashboard", getSiteDashboard);
 router.get('/active-count', getActiveSitesCount);
 router.get("/:id", getByIdSite);
-router.get('/:siteId/barbers', getBarbersBySite);
 
 router.route("/")
         .post(restrictTo("admin", "superadmin"), createSite);
