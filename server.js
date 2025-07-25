@@ -14,6 +14,7 @@ import authRoutes from "./src/routes/auth.routes.js"
 import availabilityExceptionRoutes from "./src/routes/availabilityException.routes.js"
 import barberAvailability from "./src/routes/barbersAvailability.routes.js"
 import appointmentRoutes from "./src/routes/appointment.routes.js"
+import analyticsRoutes from "./src/routes/analytics.Routes.js"
 
 dotenv.config();
 const app = express();
@@ -33,6 +34,7 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb'}))
 app.use(cookieParser());
 
+app.use("/api", analyticsRoutes);
 app.use('/api/auth', authRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/site", siteRoutes);
