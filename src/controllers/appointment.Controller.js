@@ -413,10 +413,12 @@ export const getAppointmentsByBarber = async (req, res) => {
     }
 
     // 4. Buscar las reservas en la base de datos
-    const appointments = await Appointment.findOne(query)
-      .populate("serviceId", "duration")
+    const appointments = await Appointment.find(query)
+      .populate("barberId", "name last_name")
+      .populate("serviceId", "name duration")
       .populate("siteId", "name_site")
-      .sort(sortOption);
+      .sort(sortOption)
+      .lean();
 
     if (appointments.length === 0 && date) {
       // Si se buscó por fecha y no hay nada
