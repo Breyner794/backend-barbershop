@@ -39,6 +39,39 @@ export const getDateRangeInColombia = (dateString) => {
   return { startOfDay, endOfDay };
 };
 
+export const getAllAppointments = async (req, res) => {
+    try {
+        // Usamos .populate() para traer la información completa de los campos referenciados
+        const appointments = await Appointment.find()
+            .populate('barberId', 'name last_name') // Trae el 'name' del barbero
+            .populate('serviceId', 'name price') // Trae 'name' y 'price' del servicio
+            .populate('siteId', 'name_site'); // Trae el 'name' de la sede
+
+        // El chequeo de si no hay citas sigue siendo válido
+        if (appointments.length === 0) {
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                data: [], // Envía un array vacío, el frontend lo manejará
+                message: "No hay reservas creadas en este momento."
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            count: appointments.length,
+            data: appointments,
+            message: "Reservas recuperadas exitosamente ✅"
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener las reservas",
+            error: error.message,
+        });
+    }
+}
+
 export const getAvailableSlotsForBooking = async (req, res) => {
   const { barberId, date } = req.query;
 
