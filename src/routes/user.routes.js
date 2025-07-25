@@ -12,7 +12,8 @@ import {
     updateUser,
     deleteUser,
     superUpdateUser,
-    hardDeleteUser
+    hardDeleteUser,
+    getActiveBarbersCount
 } from '../controllers/user.controller.js'
 import { uploadUserPhoto } from '../../utils/multerConfig.js';
 
@@ -20,6 +21,7 @@ const router = express.Router();
 
 router.use(protect);
 // --- RUTAS PARA EL PROPIO USUARIO (logueado) ---
+router.get('/active-barbers-count', getActiveBarbersCount);
 router.get("/me", getMyProfile);
 router.patch("/update-my-profile",uploadUserPhoto, updateMyProfile);
 router.patch("/change-my-password", changeMyPassword);

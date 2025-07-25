@@ -723,3 +723,14 @@ export const hardDeleteUser = async (req, res) => {
 //     });
 //   }
 // };
+
+export const getActiveBarbersCount = async (req, res) => {
+    try {
+        // Asumiendo que los barberos tienen el rol 'barbero' y un campo 'isActive: true'
+        const count = await User.countDocuments({ role: 'barbero', isActive: true }); 
+        res.status(200).json({ success: true, count });
+    } catch (error) {
+        console.error('Error fetching active barbers count:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
