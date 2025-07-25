@@ -5,17 +5,18 @@ import Service from "../../server/db/models/Service.js";
 import { nanoid } from "nanoid";
 import mongoose from "mongoose";
 import { getEffectiveAvailability } from "../../utils/availabilityConflictValidator.js";
+import { format } from "date-fns";
 
-const timeToMinutes = (time) => {
+export const timeToMinutes = (time) => {
   if (!time || !time.includes(":")) return 0;
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 };
 
-const getDayOfWeek = (dateString) => {
-  const date = new Date(dateString + "T00:00:00"); //se agrega + 'T00:00:00' para no tener errores de horario...
-  return date.getDay();
-};
+// const getDayOfWeek = (dateString) => {
+//   const date = new Date(dateString + "T00:00:00"); //se agrega + 'T00:00:00' para no tener errores de horario...
+//   return date.getDay();
+// };
 
 // export const getAvailableSlotsForBooking = async (req, res) => {
 //   const { barberId, date} = req.query;
