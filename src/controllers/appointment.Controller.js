@@ -166,6 +166,7 @@ export const getAvailableSlotsForBooking = async (req, res) => {
         });
   }
 };
+
 // export const getAvailableSlotsForBooking = async (req, res) => {
 //   const { barberId, date } = req.query;
 
@@ -462,7 +463,7 @@ export const createAppointment = async (req, res) => {
       });
     }
 
-    // (formato para dateString, startTime, email y phone validar si es necesario las validaciones de los campos.)
+    // Validación de horarios
     if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
       return res.status(400).json({
         success: false,
