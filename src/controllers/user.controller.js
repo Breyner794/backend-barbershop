@@ -53,14 +53,15 @@ export const updateMyProfile = async (req,res) =>{
           message: 'Error al subir la imagen de perfil. Por favor, intenta de nuevo.'
         });
       }
-    }else if (req.body.imageUrl === ''){
+    }else if (
+      Object.prototype.hasOwnProperty.call(req.body, "imageUrl") &&
+      req.body.imageUrl === ""
+    ) {
+      // Lógica para eliminación de imagen
       filteredBody.imageUrl = undefined;
-      console.log("Backend - Solicitud de eliminación de imagen detectada.");
-      //console.log("Backend - No se recibió archivo por Multer (req.file es undefined).");
-      //   if (req.body.imageUrl === null || req.body.imageUrl === ''){
-      //     filteredBody.imageUrl = undefined;
-      //     console.log("Backend - Solicitud de eliminación de imagen detectada.");
-      // }
+      console.log(
+        "Backend (superUpdateUser) - Solicitud de eliminación de imagen detectada."
+      );
     }
 
     const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
