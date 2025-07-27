@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 5050;
 scheduleTasks();
 
 app.use(cors({
-  origin: process.env.FRONTED_URL || 'http://localhost:5173', // ¡Importante! El origen de tu frontend React
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173', // ¡Importante! El origen de tu frontend React
   credentials: true // Permite que el navegador envíe cookies o cabeceras de autorización
 }));
 
