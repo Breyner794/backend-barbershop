@@ -20,7 +20,7 @@ const router = express.Router();
 
 router.get("/bookingslots", getAvailableSlotsForBooking); //Funcional faltan pruebas mas extremas.
 router.post("/lookup", getAppointmentByConfirmationDetails);
-
+router.post("/", createAppointment);
 
 
 router.use(protect);
@@ -28,7 +28,6 @@ router.use(protect);
 router.get('/upcoming-dashboard', getUpcomingAppointmentsForDashboard);
 
 router.get("/", getAllAppointments)
-router.post("/", createAppointment); 
 router.get("/:appointmentId", getAppointmentById);
 router.route("/updateappointment/:appointmentId")
     .patch(updateAppointment)
