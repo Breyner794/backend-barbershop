@@ -220,20 +220,23 @@ export const createUser = async (req, res) => {
         // Si el rol es 'superadmin', esta validación se omite y puede crear cualquier rol.
 
         // --- VALIDACIÓN DE DATOS ---
-        if (role === 'barbero' && !site_barber) {
-            return res.status(400).json({ 
-              success: false, 
-              message: 'El sitio de barbería es requerido para los barberos.'
-            });
-        }
-        const siteExists = await Site.findById(site_barber);
+        if (role === 'barbero') {
+            if (!site_barber) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'El sitio de barbería es requerido para los barberos.'
+                });
+            }
 
-       if (!siteExists) {
-         return res.status(404).json({
-           success: false,
-           message: "El sitio de barbería especificado no existe",
-         });
-       }
+            // Validar que el sitio existe solo si se proporcionó
+            const siteExists = await Site.findById(site_barber);
+            if (!siteExists) {
+                return res.status(404).json({
+                    success: false,
+                    message: "El sitio de barbería especificado no existe",
+                });
+            }
+        }
 
        let imageUrl;
        if (req.file){
