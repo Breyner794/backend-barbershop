@@ -25,8 +25,11 @@ const PORT = process.env.PORT || 5050;
 
 scheduleTasks();
 
+const frontendUrl = process.env.FRONTEND_URL;
+const cleanedFrontendUrl = frontendUrl ? frontendUrl.replace(/\$/, '') : 'http://localhost:5173';
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173', // ¡Importante! El origen de tu frontend React
+  origin: cleanedFrontendUrl, // ¡Importante! El origen de tu frontend React
   credentials: true // Permite que el navegador envíe cookies o cabeceras de autorización
 }));
 
