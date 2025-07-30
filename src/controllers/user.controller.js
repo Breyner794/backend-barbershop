@@ -276,11 +276,38 @@ export const createUser = async (req, res) => {
             data: newUser.getPublicProfile()
         });
 
-    } catch (error) {
-        if (error.code === 11000) { // Error de email duplicado
-            return res.status(400).json({ success: false, message: 'Ya existe un usuario con este email.' });
+    }  catch (error) {
+        console.log('Error completo:', error); // Para debugging
+        
+        if (error.code === 11000) {
+            // Identificar qué campo está duplicado
+            const field = Object.keys(error.keyPattern)[0];
+            const fieldNames = {
+                'email': 'email',
+                'phone': 'teléfono'
+            };
+            
+            return res.status(400).json({ 
+                success: false, 
+                message: `Ya existe un usuario con este ${fieldNames[field] || field}.` 
+            });
         }
-        res.status(400).json({ success: false, message: 'Error al crear el usuario.', error: error.message });
+        
+        // Error de validación de Mongoose
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: 'Error de validación',
+                errors: messages
+            });
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error interno del servidor.', 
+            error: error.message 
+        });
     }
 };
 
