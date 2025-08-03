@@ -1,6 +1,6 @@
 import User from "../../server/db/models/user.js";
 import Site from "../../server/db/models/site.js";
-import cloudinary from "../config/cloudinaryConfig.js";
+import { eliminarImagenCloudinary, reemplazarImagenCloudinary, subirImagenCloudinary} from "../../utils/cloudinaryUtils.js";
 
 // Función auxiliar para filtrar los campos permitidos del body (Strong Parameters)
 const filterObj = (obj, ...allowedFields) => {
@@ -34,18 +34,24 @@ export const updateMyProfile = async (req,res) =>{
 
     console.log("Backend - req.body (después de filterObj):", filteredBody);
 
+    const currentUser = await User.findById(req.user.id);
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Usuario no encontrado."
+      });
+    }
+
     if (req.file){
       console.log("Backend - Archivo recibido por Multer:", req.file);
       try{
-        const result = await cloudinary.uploader.upload(
-          `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
-          {
-            folder: 'barberpro_avatars',
-            transformation: [{ width: 200, height: 200, crop: "fill", gravity: "face" }]
-          }
+        const cloudinaryResult = await reemplazarImagenCloudinary(
+          req.file,
+          currentUser.imageUrl,
+          'barberpro_avatars',
+          'actualización foto de perfil del usuario.'
         );
-         console.log("Backend - Respuesta de Cloudinary (secure_url):", result.secure_url);
-        filteredBody.imageUrl = result.secure_url;
+        filteredBody.imageUrl = cloudinaryResult;
       }catch (uploadError){
         console.error("Error al subir la imagen a Cloudinary:", uploadError);
         return res.status(500).json({
@@ -57,11 +63,8 @@ export const updateMyProfile = async (req,res) =>{
       Object.prototype.hasOwnProperty.call(req.body, "imageUrl") &&
       req.body.imageUrl === ""
     ) {
-      // Lógica para eliminación de imagen
-      filteredBody.imageUrl = undefined;
-      console.log(
-        "Backend (superUpdateUser) - Solicitud de eliminación de imagen detectada."
-      );
+      await eliminarImagenCloudinary(currentUser.imageUrl, 'Eliminacion de foto de perfil.')
+      filteredBody.imageUrl = null;
     }
 
     const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
@@ -242,13 +245,11 @@ export const createUser = async (req, res) => {
        if (req.file){
         console.log("Backend (createUser) - Archivo recibido por Multer:", req.file);
         try{
-          const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
-        {
-          folder: 'barberpro_avatars',
-          transformation: [{ width: 200, height: 200, crop: "fill", gravity: "face" }]
-        })
-        imageUrl = result.secure_url;
-        console.log("Backend (createUser) - Imagen de usuario subida. imageUrl:", imageUrl);
+          const cloudinaryResult = await subirImagenCloudinary(
+            req.file,
+            'barberpro_avatars',
+          );
+          imageUrl = cloudinaryResult.secure_url;
         }catch (uploadError){
            console.error("Backend (createUser) - Error al subir la imagen a Cloudinary:", uploadError);
           return res.status(500).json({
@@ -406,6 +407,14 @@ export const updateUser = async (req, res) => {
       });
     }
 
+    const currentUser = await User.findById(id);
+    if(!currentUser){
+      return res.status(404).json({ 
+        success: false, 
+        message: "Usuario no encontrado." 
+      });
+    };
+
     // El admin solo puede cambiar estos campos. No puede cambiar el ROL.
     const updateData = filterObj(req.body, 'name', 'last_name', 'phone', 'isActive', 'site_barber');
 
@@ -421,15 +430,12 @@ export const updateUser = async (req, res) => {
     if(req.file){
       console.log("Backend (updateUser) - Archivo recibido por Multer:", req.file);
       try{
-        const result = await cloudinary.uploader.upload(
-          `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`,
-          {
-            folder: 'barberpro_avatars',
-            transformation: [{ width: 200, height: 200, crop: "fill", gravity: "face" }]
-          }
-        )
-        updateData.imageUrl = result.secure_url
-        console.log("Backend (updateUser) - Nueva imagen subida. imageUrl:", updateData.imageUrl);
+        updateData.imageUrl = await reemplazarImagenCloudinary(
+          req.file,
+          currentUser.imageUrl,
+          'barberpro_avatars',
+          'actualización de usuario'
+        );
       }catch(uploadError){
         console.error("Backend (updateUser) - Error al subir la imagen a Cloudinary:", uploadError);
                 return res.status(500).json({
@@ -437,9 +443,10 @@ export const updateUser = async (req, res) => {
                     message: 'Error al subir la imagen de perfil para el usuario.',
                 });
       }
-    } else if ('imageUrl' in req.body && req.body.imageUrl === '') {
-            updateData.imageUrl = undefined;
-            console.log("Backend (updateUser) - Solicitud de eliminación de imagen detectada. imageUrl se establecerá a undefined.");
+    } else if ('imageUrl' in req.body && req.body.imageUrl === '')
+      {
+        await eliminarImagenCloudinary(currentUser.imageUrl, 'Eliminacion de imagen del usuario.')
+            updateData.imageUrl = null;
         }
 
     const updatedUser = await User.findByIdAndUpdate(id, updateData, {
@@ -602,22 +609,12 @@ export const superUpdateUser = async (req, res) => {
         req.file
       );
       try {
-        const result = await cloudinary.uploader.upload(
-          `data:${req.file.mimetype};base64,${req.file.buffer.toString(
-            "base64"
-          )}`,
-          {
-            folder: "barberpro_avatars",
-            transformation: [
-              { width: 200, height: 200, crop: "fill", gravity: "face" },
-            ],
-          }
-        );
-        userToUpdate.imageUrl = result.secure_url; // CORRECCIÓN del console.log del error anterior:
-        console.log(
-          "Backend (updateUser) - Nueva imagen subida. imageUrl:",
-          userToUpdate.imageUrl
-        );
+        userToUpdate.imageUrl = await reemplazarImagenCloudinary(
+          req.file,
+          userToUpdate.imageUrl,
+          'barberpro_avatars',
+          'actualización de usuario'
+        )
       } catch (uploadError) {
         console.error(
           "Backend (updateUser) - Error al subir la imagen a Cloudinary:",
@@ -630,9 +627,9 @@ export const superUpdateUser = async (req, res) => {
       }
     } else if (
       Object.prototype.hasOwnProperty.call(req.body, "imageUrl") &&
-      req.body.imageUrl === ""
-    ) {
-      // Lógica para eliminación de imagen
+      req.body.imageUrl === "") 
+      {
+      await eliminarImagenCloudinary(userToUpdate.imageUrl, 'Eliminacion de imagen de usuario');
       userToUpdate.imageUrl = undefined;
       console.log(
         "Backend (superUpdateUser) - Solicitud de eliminación de imagen detectada."
@@ -677,11 +674,7 @@ export const hardDeleteUser = async (req, res) => {
       });
     }
 
-    // res.status(200).json({
-    //   success: true,
-    //   data: deletedUser,
-    //   message: "Usuario eliminado correctamente ♻️",
-    // });
+    await eliminarImagenCloudinary(deletedUser.imageUrl, 'Eliminacion de foto de usuario. hardDelete')
 
     res.status(204).send(); // 204 No Content, no hay cuerpo en la respuesta
 
