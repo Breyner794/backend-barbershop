@@ -32,7 +32,7 @@ export const updateMyProfile = async (req,res) =>{
 
     const filteredBody = filterObj(req.body, 'name', 'last_name', 'phone');
 
-    console.log("Backend - req.body (después de filterObj):", filteredBody);
+    // console.log("Backend - req.body (después de filterObj):", filteredBody);
 
     const currentUser = await User.findById(req.user.id);
     if (!currentUser) {
@@ -71,9 +71,6 @@ export const updateMyProfile = async (req,res) =>{
             new: true,
             runValidators: true
         });
-
-          console.log("Backend - Usuario actualizado en DB (imageUrl):", updatedUser.imageUrl);
-          console.log("Backend - getPublicProfile() data:", updatedUser.      getPublicProfile());
 
         res.status(200).json({
           success: true,
@@ -216,7 +213,7 @@ export const createUser = async (req, res) => {
             if (!allowedRoles.includes(role)) {
                 return res.status(403).json({ // 403 Forbidden: Sabes quién soy, pero no tienes permiso
                     success: false,
-                    message: 'Permiso denegado. Los administradores solo pueden crear usuarios con rol de "barbero" o "recepcionista".'
+                    message: 'Permiso denegado. Los administradores solo pueden crear usuarios con rol de "barbero".'
                 });
             }
         }
@@ -311,80 +308,6 @@ export const createUser = async (req, res) => {
         });
     }
 };
-
-// export const createUser = async (req, res) => {
-//   try {
-//     const { name, last_name, phone, email, password, role, site_barber, imageUrl } = req.body;
-
-//     // Validaciones específicas según el rol
-//     if (role === 'barbero') {
-//       if (!site_barber) {
-//         return res.status(400).json({
-//           success: false,
-//           message: "El sitio de barbería es requerido para barberos",
-//         });
-//       }
-
-//       // Verificar que el sitio existe
-//       const siteExists = await Site.findById(site_barber);
-
-//       if (!siteExists) {
-//         return res.status(404).json({
-//           success: false,
-//           message: "El sitio de barbería especificado no existe",
-//         });
-//       }
-//     }
-
-//     // Verificar si el email ya existe
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Ya existe un usuario con este email",
-//       });
-//     }
-
-//     const userData = {
-//       name,
-//       last_name,
-//       phone,
-//       email,
-//       password,
-//       role,
-//       imageUrl,
-//       isActive: true
-//     };
-
-//     // Solo agregar campos específicos si el rol lo requiere
-//     if (role === 'barbero') {
-//       userData.site_barber = site_barber;
-//     }
-
-//     const newUser = new User(userData);
-//     const savedUser = await newUser.save();
-
-//     // Poblar la referencia antes de enviar la respuesta
-//     await savedUser.populate('site_barber', 'name_site');
-
-//     res.status(201).json({
-//       success: true,
-//       message: `Nuevo usuario ${savedUser.email} registrado exitosamente. ✅`,
-//       data: savedUser.getPublicProfile(), //Funcion para que no devuelva todo los datos delicados
-//     });
-
-//   } catch (error) {
-//      if (error.code === 11000) {
-//             return res.status(400).json({ 
-//               success: false, 
-//               message: 'Ya existe un usuario con este email.' });
-//         }
-//         res.status(400).json({ 
-//           success: false, 
-//           message: 'Error al crear el usuario.', 
-//           error: error.message });
-//   }
-// };
 
 /**
  * @desc    Actualización segura de usuario por un Admin.
@@ -631,9 +554,6 @@ export const superUpdateUser = async (req, res) => {
       {
       await eliminarImagenCloudinary(userToUpdate.imageUrl, 'Eliminacion de imagen de usuario');
       userToUpdate.imageUrl = undefined;
-      console.log(
-        "Backend (superUpdateUser) - Solicitud de eliminación de imagen detectada."
-      );
     }
 
     const updatedUser = await userToUpdate.save({ runValidators: true });
@@ -686,67 +606,6 @@ export const hardDeleteUser = async (req, res) => {
     });
   }
 };
-
-// Función adicional para obtener usuarios por rol
-// export const getUsersByRole = async (req, res) => {
-//   try {
-//     const { role } = req.params;
-    
-//     if (!['admin', 'barbero', 'recepcionista', 'superadmin'].includes(role)) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Rol no válido",
-//       });
-//     }
-
-//     const users = await User.find({ role, isActive: true })
-//       .populate('site_barber', 'name_site')
-//       .sort({ createdAt: -1 });
-
-//     res.status(200).json({
-//       success: true,
-//       count: users.length,
-//       data: users,
-//       message: `Usuarios con rol ${role} recuperados exitosamente ✅.`,
-//     });
-
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: "Error interno del servidor",
-//       error: error.message,
-//     });
-//   }
-// };
-
-// Función para obtener barberos de un sitio específico
-// export const getBarbersBySite = async (req, res) => {
-//   try {
-//     const { siteId } = req.params;
-
-//     const barbers = await User.find({ 
-//       role: 'barbero', 
-//       site_barber: siteId,
-//       isActive: true 
-//     })
-//     .populate('site_barber', 'name_site')
-//     .sort({ createdAt: -1 });
-
-//     res.status(200).json({
-//       success: true,
-//       count: barbers.length,
-//       data: barbers,
-//       message: "Barberos del sitio recuperados exitosamente ✅.",
-//     });
-
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: "Error interno del servidor",
-//       error: error.message,
-//     });
-//   }
-// };
 
 export const getActiveBarbersCount = async (req, res) => {
     try {
