@@ -477,7 +477,7 @@ export const superUpdateUser = async (req, res) => {
     if (name) userToUpdate.name = name;
     if (last_name) userToUpdate.last_name = last_name;
     if (phone !== undefined) userToUpdate.phone = phone;
-    //if (email) userToUpdate.email = email;
+    if (email) userToUpdate.email = email;
     if (password) userToUpdate.password = password; // El pre-save hook se encargará del hash
     //if (imageUrl !== undefined) userToUpdate.imageUrl = imageUrl;
     if (isActive !== undefined) userToUpdate.isActive = isActive;
