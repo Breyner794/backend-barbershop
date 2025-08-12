@@ -252,7 +252,6 @@ export const creacteCompletedService = async (req, res) => {
     siteId,
     clientName,
     clientPhone,
-    clientEmail,
     startTime,
     notes
   } = req.body;
@@ -261,6 +260,9 @@ export const creacteCompletedService = async (req, res) => {
     if (!barberId || !serviceId || !siteId || !clientName || !startTime){
       return res.status(400).json({ success: false, message: "Faltan campos obligatorios para registrar el servicio." });
     }
+
+    const phoneToSave = clientPhone && clientPhone.trim() !== '' ? clientPhone : '0000000000';
+
     const TIMEZONE = 'America/Bogota';
     const todayString = format(new Date(), 'yyyy-MM-dd', { timeZone: TIMEZONE });
 
@@ -285,7 +287,7 @@ export const creacteCompletedService = async (req, res) => {
       startTime,
       endTime, 
       clientName,
-      clientPhone,
+      clientPhone: phoneToSave,
       notes,
       status: "completada",
       isWalkIn: true,
