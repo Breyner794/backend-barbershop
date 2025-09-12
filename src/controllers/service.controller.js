@@ -100,7 +100,7 @@ export const createServices = async (req, res) => {
   try {
    const {name, price, duration, description, isActive } = req.body;
    
-   let imageUrl = '';
+   let imageUrl;
 
    if(req.file){
     console.log("Backend (createServices) - Archivo recibido:", req.file.originalname);
