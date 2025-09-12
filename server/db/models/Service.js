@@ -33,7 +33,7 @@ const serviceSchema = new mongoose.Schema(
   },
     image_Url: {
       type: String, //Tener una imagen por default si no elige alguna imagen...
-      default: 'https://example.com/default-service-image.png'
+      default: 'https://res.cloudinary.com/dibpc6jxc/image/upload/v1757710877/openart-image_TDvqxjno_2048x2048_1757710645574_l14xsf.webp'
     },
     isActive: {
       type: Boolean, //Poder activar el servicio o desactivarlo.
