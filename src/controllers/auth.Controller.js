@@ -75,17 +75,238 @@ const sendPasswordResetEmail = async (user, resetToken) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: user.email,
-    subject: 'Restablecer contraseña - BarberApp',
+    subject: "Restablecer contraseña - BarberApp",
     html: `
-      <h2>Restablecer contraseña</h2>
-      <p>Hola ${user.name},</p>
-      <p>Haz clic en el siguiente enlace para restablecer tu contraseña:</p>
-      <a href="${resetUrl}" style="background: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-        Restablecer contraseña
-      </a>
-      <p>Este enlace expira en 10 minutos.</p>
+      <!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Restablecer Contraseña - BarberPro</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8fafc;
+      color: #334155;
+    "
+  >
+    <div
+      style="
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      "
+    >
+      <!-- Header con degradado -->
+      <div
+        style="
+          background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+          padding: 40px 30px;
+          text-align: center;
+        "
+      >
+        <h1
+          style="
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          "
+        >
+          BarberPro
+        </h1>
+        <p
+          style="
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            margin: 10px 0 0;
+            font-weight: 400;
+          "
+        >
+          Sistema de Gestión Profesional
+        </p>
+      </div>
+
+      <!-- Contenido principal -->
+      <div style="padding: 40px 30px">
+        <h2
+          style="
+            color: #1e293b;
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 20px;
+            text-align: center;
+          "
+        >
+          Restablecer Contraseña
+        </h2>
+
+        <div
+          style="
+            background-color: #f1f5f9;
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+          "
+        >
+          <p
+            style="margin: 0; color: #475569; font-size: 16px; line-height: 1.6"
+          >
+            <strong>Hola ${user.name},</strong>
+          </p>
+        </div>
+
+        <p
+          style="
+            color: #64748b;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 20px 0;
+          "
+        >
+          Hemos recibido una solicitud para restablecer la contraseña de tu
+          cuenta en BarberPro. Si realizaste esta solicitud, haz clic en el
+          botón de abajo para crear una nueva contraseña.
+        </p>
+
+        <!-- Botón principal -->
+        <div style="text-align: center; margin: 30px 0">
+          <a
+            href="${resetUrl}"
+            style="
+              display: inline-block;
+              background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+              color: #ffffff;
+              padding: 16px 32px;
+              text-decoration: none;
+              border-radius: 8px;
+              font-weight: 600;
+              font-size: 16px;
+              box-shadow: 0 4px 14px 0 rgba(220, 38, 38, 0.39);
+              transition: all 0.3s ease;
+            "
+          >
+            🔐 Restablecer mi contraseña
+          </a>
+        </div>
+
+        <!-- Información de seguridad -->
+        <div
+          style="
+            background-color: #fef3c7;
+            border: 1px solid #fde68a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 30px 0;
+          "
+        >
+          <div style="display: flex; align-items: flex-start">
+            <div style="color: #d97706; font-size: 20px; margin-right: 12px">
+              ⚠️
+            </div>
+            <div>
+              <p
+                style="
+                  color: #92400e;
+                  font-size: 14px;
+                  font-weight: 600;
+                  margin: 0 0 8px;
+                "
+              >
+                Información importante:
+              </p>
+              <ul
+                style="
+                  color: #92400e;
+                  font-size: 14px;
+                  margin: 0;
+                  padding-left: 20px;
+                "
+              >
+                <li>Este enlace expira en <strong>10 minutos</strong></li>
+                <li>Solo puede ser usado una vez</li>
+                <li>Si no solicitaste este cambio, ignora este email</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enlace alternativo -->
+        <div
+          style="
+            background-color: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+          "
+        >
+          <p
+            style="
+              color: #64748b;
+              font-size: 14px;
+              margin: 0 0 10px;
+              font-weight: 600;
+            "
+          >
+            ¿El botón no funciona?
+          </p>
+          <p
+            style="color: #64748b; font-size: 14px; margin: 0; line-height: 1.5"
+          >
+            Copia y pega este enlace en tu navegador:<br />
+            <a
+              href="${resetUrl}"
+              style="
+                color: #3b82f6;
+                word-break: break-all;
+                text-decoration: underline;
+              "
+            >
+              ${resetUrl}
+            </a>
+          </p>
+        </div>
+
+        <hr
+          style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0"
+        />
+
+        <!-- Footer -->
+        <div style="text-align: center">
+          <p style="color: #94a3b8; font-size: 14px; margin: 10px 0">
+            Si no solicitaste restablecer tu contraseña, puedes ignorar este
+            email con seguridad.
+          </p>
+          <p style="color: #94a3b8; font-size: 12px; margin: 10px 0">
+            Este es un email automático, por favor no respondas a este mensaje.
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer con branding -->
+      <div style="background-color: #1e293b; padding: 30px; text-align: center">
+        <p style="color: #94a3b8; font-size: 14px; margin: 0 0 10px">
+          © ${new Date().getFullYear()} BarberPro. Todos los derechos
+          reservados.
+        </p>
+        <p style="color: #64748b; font-size: 12px; margin: 0">
+          Sistema de gestión profesional para barberías.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
+
     `,
-  }
+  };
 
   await transporter.sendMail(mailOptions);
 
