@@ -70,7 +70,7 @@ const crearEnviarToken = (user, statusCode, res) => {
 
 const sendPasswordResetEmail = async (user, resetToken) => {
 
-  const resetUrl = `${process.env.FRONTED_URL}/reset-password/${resetToken}`;
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
