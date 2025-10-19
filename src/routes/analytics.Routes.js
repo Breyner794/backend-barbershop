@@ -10,6 +10,9 @@ import {
   getRevenueByBarberOrService,
   getServiceStatus,
   getCancellationRate,
+  getRevenueBreakdownByBarber,
+  getNetRevenueByDateRange,
+  getRevenueBySite
 
 } from '../controllers/analyticsController.js';
 
@@ -44,4 +47,13 @@ router.get('/analytics/service-status', getServiceStatus);
 
 //Ruta para obtener las reservas cancelados o no asistidas.
 router.get('/analytics/cancellation-rate', getCancellationRate);
+
+// Ruta para el desglose de ingresos por barbero
+router.get('/analytics/revenue/breakdown', getRevenueBreakdownByBarber);
+
+// Ruta para la ganancia neta del negocio (descontando comisiones)
+router.get('/analytics/revenue/net', getNetRevenueByDateRange);
+
+router.get('/analytics/revenue-by-site', getRevenueBySite);
+
 export default router;
