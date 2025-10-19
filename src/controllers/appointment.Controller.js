@@ -2,6 +2,8 @@ import Appointment from "../../server/db/models/appoiment.js";
 //import Availabilitybarber from "../../server/db/models/barbersAvailability.js";
 //import Availabilityexception from "../../server/db/models/availabilityExceptions.js";
 import Service from "../../server/db/models/Service.js";
+import Site from "../../server/db/models/site.js";
+import User from "../../server/db/models/user.js";
 import { nanoid } from "nanoid";
 import mongoose from "mongoose";
 import { getEffectiveAvailability } from "../../utils/availabilityConflictValidator.js";
@@ -273,6 +275,20 @@ export const creacteCompletedService = async (req, res) => {
       return res.status(404).json({ success: false, message: "Servicio no encontrado o no tiene una duración definida." });
     }
 
+    const barber = await User.findById(barberId); 
+    if (!barber) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Barbero no encontrado." });
+    }
+
+    const site = await Site.findById(siteId);
+    if (!site) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Sede no encontrada." });
+    }
+
     const startTimeInMinutes = timeToMinutes(startTime);
     const endTimeInMinutes = startTimeInMinutes + service.duration;
     const endHours = Math.floor(endTimeInMinutes / 60);
@@ -292,7 +308,13 @@ export const creacteCompletedService = async (req, res) => {
       status: "completada",
       isWalkIn: true,
       completedAt: new Date(),
-      confirmationCode: `WALKIN_${nanoid(8)}`
+      confirmationCode: `WALKIN_${nanoid(8)}`,
+      serviceNameSnapshot: service.name,
+      servicePriceSnapshot: service.price,
+      serviceDurationSnapshot: service.duration,
+      barberNameSnapshot: barber.name,
+      siteNameSnapshot: site.name_site,
+
     });
 
     await newServiceRecord.save();
@@ -480,7 +502,21 @@ export const createAppointment = async (req, res) => {
         .json({ success: false, message: "Servicio no encontrado." });
     }
 
-    // 🔧 CORRECCIÓN: Usar el manejo correcto de zona horaria
+    const barber = await User.findById(barberId); 
+    if (!barber) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Barbero no encontrado." });
+    }
+
+    // Obtener datos de la Sede
+    const site = await Site.findById(siteId);
+    if (!site) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Sede no encontrada." });
+    }
+
     const { startOfDay, endOfDay } = getDateRangeInColombia(dateString);
     
     console.log(`📅 Creando nueva cita para ${dateString}:`);
@@ -526,6 +562,11 @@ export const createAppointment = async (req, res) => {
       clientEmail,
       notes,
       status: "pendiente",
+      serviceNameSnapshot: service.name,
+      servicePriceSnapshot: service.price,
+      serviceDurationSnapshot: service.duration,
+      barberNameSnapshot: barber.name,
+      siteNameSnapshot: site.name_site,
     });
 
     // Generar código de confirmación en mayúsculas

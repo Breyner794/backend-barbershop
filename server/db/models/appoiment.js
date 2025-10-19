@@ -16,6 +16,30 @@ const appointmentSchema = new mongoose.Schema({
     ref: "Site",
     required: true
   },
+  
+  serviceNameSnapshot: {
+    type: String,
+    required: true, 
+  },
+  servicePriceSnapshot: {
+    type: Number, 
+    required: true, 
+  },
+  serviceDurationSnapshot: {
+    type: Number, 
+    required: false, 
+  },
+
+  barberNameSnapshot: {
+    type: String,
+    required: true,
+  },
+
+  siteNameSnapshot: {
+    type: String,
+    required: true,
+  },
+
   date: {
     type: Date,
     required: true
