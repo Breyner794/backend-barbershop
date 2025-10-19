@@ -423,7 +423,7 @@ export const getRevenueByDateRange = async (req, res) => {
     }
 };
 
-
+// --- NUEVO ENDPOINT: Recaudación por Barbero o Servicio ---
 export const getRevenueByBarberOrService = async (req, res) => {
     try {
         const { startDate, endDate, groupBy } = req.query; // groupBy puede ser 'barber' o 'service'
@@ -460,12 +460,14 @@ export const getRevenueByBarberOrService = async (req, res) => {
                     as: 'serviceDetails'
                 }
             },
-            { $unwind: '$serviceDetails' }, // Desestructura el array serviceDetails
+            { $unwind: { path: '$serviceDetails', preserveNullAndEmptyArrays: true } }, 
             {
                 $project: {
                     barberId: 1,
                     serviceId: 1,
-                    revenue: '$serviceDetails.price' // El precio del servicio
+                    serviceNameSnapshot: 1, 
+                    barberNameSnapshot: 1,
+                    revenue: {$ifNull: ['$serviceDetails.price', '$servicePriceSnapshot']}
                 }
             }
         ];
@@ -475,24 +477,29 @@ export const getRevenueByBarberOrService = async (req, res) => {
                 {
                     $group: {
                         _id: '$barberId',
-                        totalRevenue: { $sum: '$revenue' }
+                        totalRevenue: { $sum: '$revenue' },
+                        barberSnapshotName: { $max: '$barberNameSnapshot' }
                     }
                 },
                 {
                     $lookup: {
-                        from: 'users', // Colección de usuarios (donde están los barberos)
+                        from: 'users',
                         localField: '_id',
                         foreignField: '_id',
                         as: 'barberDetails'
                     }
                 },
-                { $unwind: '$barberDetails' },
+                { $unwind: { path: '$barberDetails', preserveNullAndEmptyArrays: true } }, 
                 {
                     $project: {
                         _id: 0,
                         barberId: '$_id',
-                        barberName: '$barberDetails.name', // Asumiendo 'name' para el barbero
-                        barberLastName: '$barberDetails.last_name', // Asumiendo 'last_name'
+                        barberName: { 
+                            $ifNull: [
+                                '$barberDetails.name', '$barberSnapshotName', 'Usuario por defecto'
+                            ]
+                        },
+                        barberLastName: { $ifNull: ['$barberDetails.last_name', '- Eliminado'] },
                         totalRevenue: 1
                     }
                 },
@@ -503,29 +510,42 @@ export const getRevenueByBarberOrService = async (req, res) => {
                 {
                     $group: {
                         _id: '$serviceId',
-                        totalRevenue: { $sum: '$revenue' }
+                        totalRevenue: { $sum: '$revenue' },
+                        serviceSnapshotName: { $max: '$serviceNameSnapshot' } 
                     }
                 },
                 {
                     $lookup: {
-                        from: 'services', // Colección de servicios
+                        from: 'services',
                         localField: '_id',
                         foreignField: '_id',
                         as: 'serviceDetails'
                     }
                 },
-                { $unwind: '$serviceDetails' },
+                
+                { $unwind: { path: '$serviceDetails', preserveNullAndEmptyArrays: true } }, 
                 {
                     $project: {
                         _id: 0,
                         serviceId: '$_id',
-                        serviceName: '$serviceDetails.name', // Asumiendo 'name' para el servicio
-                        totalRevenue: 1
+                        totalRevenue: 1,
+                        serviceName: { 
+                            $ifNull: [
+                                '$serviceDetails.name', 
+                                {
+                                    $cond: {
+                                        if: { $ne: ["$serviceSnapshotName", null] },
+                                        then: { $concat: ["$serviceSnapshotName", " (Eliminado)"] },
+                                        else: 'Servicio por defecto'
+                                    }
+                                }
+                            ]
+                        }
                     }
                 },
                 { $sort: { totalRevenue: -1 } }
             );
-        } else { // Si no hay groupBy, es la recaudación total (similar a getRevenueByDateRange, pero aquí centralizado)
+        } else {
              aggregationPipeline.push(
                 {
                     $group: {
