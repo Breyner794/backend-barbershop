@@ -661,3 +661,348 @@ export const getCancellationRate = async (req, res) => {
         });
     }
 };
+
+// --- ENDPOINT: Ganancia Neta del Negocio (descontando comisiones) ---
+export const getNetRevenueByDateRange = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Los parámetros "startDate" y "endDate" son requeridos.'
+            });
+        }
+
+        const { startOfDay: startOfRangeUTC } = getDateRangeInColombia(startDate);
+        const { endOfDay: endOfRangeUTC } = getDateRangeInColombia(endDate);
+
+        const revenueData = await Appointment.aggregate([
+            {
+                $match: {
+                    date: { $gte: startOfRangeUTC, $lte: endOfRangeUTC },
+                    status: "completada"
+                }
+            },
+            {
+                $lookup: { 
+                    from: 'services',
+                    localField: 'serviceId',
+                    foreignField: '_id',
+                    as: 'serviceDetails'
+                }
+            },
+            { $unwind: { path: '$serviceDetails', preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    // 'servicePrice' será el precio final del servicio, usando el snapshot si el lookup falla.
+                    servicePrice: {$ifNull: ['$servicePriceSnapshot', '$serviceDetails.price', 0]}, 
+                }
+            },
+            {
+                $addFields: {
+                    // 1. Calculamos la comisión del barbero (37.5%) multiplicando el precio final por 0.375
+                    barberCommission: { $multiply: ['$servicePrice', 0.375] },
+                    // 2. Calculamos el ingreso neto del negocio (62.5%) multiplicando el precio final por 0.625
+                    businessRevenue: { $multiply: ['$servicePrice', 0.625] } 
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    grossRevenue: { $sum: '$servicePrice' }, // Ganancia bruta total
+                    netRevenue: { $sum: '$businessRevenue' }, // Ganancia neta del negocio (62.5%)
+                    totalCommissions: { $sum: '$barberCommission' }, // Total en comisiones (37.5%)
+                    totalAppointments: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    grossRevenue: 1,
+                    netRevenue: 1,
+                    totalCommissions: 1,
+                    totalAppointments: 1,
+                    // Porcentaje de ganancia neta (siempre será 62.5%)
+                    netRevenuePercentage: {
+                        $cond: [
+                            { $eq: ['$grossRevenue', 0] },
+                            0, // Si el ingreso bruto es 0, el porcentaje es 0
+                            { $multiply: [ { $divide: ['$netRevenue', '$grossRevenue'] }, 100 ] }
+                        ]
+                    }
+                }
+            }
+        ]);
+
+        const data = revenueData.length > 0 ? revenueData[0] : {
+            grossRevenue: 0,
+            netRevenue: 0,
+            totalCommissions: 0,
+            totalAppointments: 0,
+            netRevenuePercentage: 0
+        };
+
+        res.status(200).json({
+            success: true,
+            startDate: format(parseISO(startDate), 'yyyy-MM-dd'),
+            endDate: format(parseISO(endDate), 'yyyy-MM-dd'),
+            data: {
+                grossRevenue: data.grossRevenue, // Ingresos brutos totales
+                netRevenue: data.netRevenue, // Ganancia neta para el negocio (62.5%)
+                totalCommissions: data.totalCommissions, // Total pagado en comisiones (37.5%)
+                totalAppointments: data.totalAppointments,
+                netRevenuePercentage: parseFloat(data.netRevenuePercentage?.toFixed(2)) || 62.5,
+                commissionPercentage: 37.5
+            },
+            message: 'Ganancia neta calculada exitosamente.'
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching net revenue:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor al calcular la ganancia neta.',
+            error: error.message
+        });
+    }
+};
+
+
+// --- ENDPOINT: Desglose detallado por barbero ---
+export const getRevenueBreakdownByBarber = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Los parámetros "startDate" y "endDate" son requeridos.'
+            });
+        }
+
+        const { startOfDay: startOfRangeUTC } = getDateRangeInColombia(startDate);
+        const { endOfDay: endOfRangeUTC } = getDateRangeInColombia(endDate);
+
+        const breakdown = await Appointment.aggregate([
+          {
+            $match: {
+              date: { $gte: startOfRangeUTC, $lte: endOfRangeUTC },
+              status: "completada",
+            },
+          },
+          {
+            $lookup: {
+              from: "services",
+              localField: "serviceId",
+              foreignField: "_id",
+              as: "serviceDetails",
+            },
+          },
+          { $unwind: { path: '$serviceDetails', preserveNullAndEmptyArrays: true } },
+          {
+            $group: {
+              _id: "$barberId",
+              barberSnapshotName: { $max: '$barberNameSnapshot' },
+              totalServices: {
+                $sum: {
+                  $ifNull: [
+                    "$servicePriceSnapshot",
+                    "$serviceDetails.price",
+                    0,
+                  ],
+                },
+              },
+              appointmentCount: { $sum: 1 },
+            },
+          },
+          {
+            $addFields: {
+              // Comisión del barbero (37.5%)
+              barberCommission: { $multiply: ["$totalServices", 0.375] },
+              // Lo que queda para el negocio (62.5%)
+              businessShare: { $multiply: ["$totalServices", 0.625] },
+            },
+          },
+          {
+            $lookup: {
+              from: "users",
+              localField: "_id",
+              foreignField: "_id",
+              as: "barberDetails",
+            },
+          },
+          { $unwind: { path: '$barberDetails', preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              _id: 0,
+              barberId: "$_id",
+              barberName: {
+                $ifNull: [
+                  "$barberDetails.name",
+                  "$barberSnapshotName",
+                  "Usuario",
+                ],
+              },
+              barberLastName: {
+                $ifNull: ["$barberDetails.last_name", " (Eliminado)"],
+              },
+              totalServices: 1,
+              appointmentCount: 1,
+              barberCommission: 1, // 37.5% para el barbero
+              businessShare: 1, // 62.5% para el negocio
+            },
+          },
+          { $sort: { totalServices: -1 } },
+        ]);
+
+        res.status(200).json({
+            success: true,
+            startDate: format(parseISO(startDate), 'yyyy-MM-dd'),
+            endDate: format(parseISO(endDate), 'yyyy-MM-dd'),
+            data: breakdown,
+            commissionPercentage: 37.5,
+            businessPercentage: 62.5,
+            message: 'Desglose de ingresos por barbero calculado exitosamente.'
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching revenue breakdown:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor.',
+            error: error.message
+        });
+    }
+};
+
+// --- ENDPOINT: Recaudo por sede ---
+export const getRevenueBySite = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Los parámetros "startDate" y "endDate" son requeridos.'
+            });
+        }
+
+        const { startOfDay: startOfRangeUTC } = getDateRangeInColombia(startDate);
+        const { endOfDay: endOfRangeUTC } = getDateRangeInColombia(endDate);
+
+        const siteRevenue = await Appointment.aggregate([
+            {
+                $match: {
+                    date: { $gte: startOfRangeUTC, $lte: endOfRangeUTC },
+                    status: "completada"
+                }
+            },
+            {
+                $lookup: {
+                    from: "services",
+                    localField: "serviceId",
+                    foreignField: "_id",
+                    as: "serviceDetails"
+                }
+            },
+            { $unwind: { path: '$serviceDetails', preserveNullAndEmptyArrays: true } },
+            {
+                $group: {
+                    _id: "$siteId",
+                    siteName: { $first: "$siteNameSnapshot" },
+                    totalRevenue: {
+                        $sum: {
+                            $ifNull: [
+                                "$servicePriceSnapshot",
+                                "$serviceDetails.price",
+                                0
+                            ]
+                        }
+                    },
+                    appointmentCount: { $sum: 1 }
+                }
+            },
+            {
+                $addFields: {
+                    // Comisión del barbero (37.5%)
+                    totalCommissions: { $multiply: ["$totalRevenue", 0.375] },
+                    // Ganancia neta para el negocio (62.5%)
+                    netRevenue: { $multiply: ["$totalRevenue", 0.625] }
+                }
+            },
+            {
+                $lookup: {
+                    from: "sites",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "siteDetails"
+                }
+            },
+            { $unwind: { path: '$siteDetails', preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 0,
+                    siteId: "$_id",
+                    siteName: {
+                        $ifNull: [
+                    "$siteDetails.name_site", // 1. Intenta usar el nombre original (si existe)
+                    {
+                        // 2. Si el original es null, ejecuta este condicional:
+                        $cond: {
+                            if: { $ne: [ "$siteName", null ] }, // SI siteName (snapshot) NO es null
+                            then: { $concat: [ "$siteName", " (Eliminado)" ] }, // ENTONCES, concatena con la etiqueta
+                            else: "Sede Desconocida" // SINO (si ambos son null), usa el valor por defecto
+                        }
+                    }
+                ]
+                    },
+                    totalRevenue: 1,
+                    netRevenue: 1,
+                    totalCommissions: 1,
+                    appointmentCount: 1,
+                    averageRevenuePerAppointment: {
+                        $cond: [
+                            { $eq: ["$appointmentCount", 0] },
+                            0,
+                            { $divide: ["$totalRevenue", "$appointmentCount"] }
+                        ]
+                    }
+                }
+            },
+            { $sort: { totalRevenue: -1 } }
+        ]);
+
+        // Calcular totales generales
+        const totals = siteRevenue.reduce((acc, site) => ({
+            totalRevenue: acc.totalRevenue + site.totalRevenue,
+            netRevenue: acc.netRevenue + site.netRevenue,
+            totalCommissions: acc.totalCommissions + site.totalCommissions,
+            totalAppointments: acc.totalAppointments + site.appointmentCount
+        }), {
+            totalRevenue: 0,
+            netRevenue: 0,
+            totalCommissions: 0,
+            totalAppointments: 0
+        });
+
+        res.status(200).json({
+            success: true,
+            startDate: format(parseISO(startDate), 'yyyy-MM-dd'),
+            endDate: format(parseISO(endDate), 'yyyy-MM-dd'),
+            data: siteRevenue,
+            totals,
+            commissionPercentage: 37.5,
+            netRevenuePercentage: 62.5,
+            message: 'Recaudo por sede calculado exitosamente.'
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching revenue by site:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor.',
+            error: error.message
+        });
+    }
+};
