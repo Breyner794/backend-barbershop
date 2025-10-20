@@ -31,16 +31,12 @@ const crearEnviarToken = (user, statusCode, res) => {
   // Enviar cookie
   res.cookie("jwt", token, cookieOptions);
 
-  // Eliminar la contraseña de la salida
-  user.password = undefined;
-
-  const userProfile = user.getPublicProfile(); //VERIFICAR...
   // Enviar respuesta
   res.status(statusCode).json({
     status: "success",
     token,
     data: {
-      user: userProfile,
+      user: user,
     },
   });
 };
@@ -347,9 +343,10 @@ export const login = async (req, res, next) => {
     // Actualizar último login (agregado)
     user.last_login = new Date();
     await user.save({ validateBeforeSave: false });
+    const userPublicProfile = user.getPublicProfile();
 
     // 3) Si todo está bien, enviar token al cliente
-    crearEnviarToken(user, 200, res);
+    crearEnviarToken(userPublicProfile, 200, res);
   } catch (error) {
     res.status(400).json({
       status: false,
