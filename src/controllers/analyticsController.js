@@ -388,11 +388,19 @@ export const getRevenueByDateRange = async (req, res) => {
                     as: 'serviceDetails'
                 }
             },
-            { $unwind: '$serviceDetails' }, // Desestructura el array 'serviceDetails'
+            { $unwind: { path: '$serviceDetails', preserveNullAndEmptyArrays: true } },
             {
                 $group: {
-                    _id: null, // Agrupa todos los documentos restantes en un solo grupo
-                    totalAmount: { $sum: '$serviceDetails.price' } // Suma los precios de los servicios
+                    _id: null, 
+                    totalAmount: { $sum: { 
+                            // Si ambos fallan (null), usa 0 (aunque el match ya filtró 'completada', es buena práctica)
+                            $ifNull: [
+                                '$serviceDetails.price',
+                                '$servicePriceSnapshot',
+                                0
+                            ]
+                        } 
+                    } 
                 }
             },
             {
