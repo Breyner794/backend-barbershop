@@ -685,6 +685,9 @@ export const getNetRevenueByDateRange = async (req, res) => {
         const { startOfDay: startOfRangeUTC } = getDateRangeInColombia(startDate);
         const { endOfDay: endOfRangeUTC } = getDateRangeInColombia(endDate);
 
+        // Comisión fija por corte para el negocio
+        const BUSINESS_FEE_PER_CUT = 6000;
+
         const revenueData = await Appointment.aggregate([
             {
                 $match: {
@@ -703,24 +706,24 @@ export const getNetRevenueByDateRange = async (req, res) => {
             { $unwind: { path: '$serviceDetails', preserveNullAndEmptyArrays: true } },
             {
                 $project: {
-                    // 'servicePrice' será el precio final del servicio, usando el snapshot si el lookup falla.
+                    // Precio final del servicio
                     servicePrice: {$ifNull: ['$servicePriceSnapshot', '$serviceDetails.price', 0]}, 
                 }
             },
             {
                 $addFields: {
-                    // 1. Calculamos la comisión del barbero (37.5%) multiplicando el precio final por 0.375
-                    barberCommission: { $multiply: ['$servicePrice', 0.375] },
-                    // 2. Calculamos el ingreso neto del negocio (62.5%) multiplicando el precio final por 0.625
-                    businessRevenue: { $multiply: ['$servicePrice', 0.625] } 
+                    // El negocio recibe $6,000 fijos por cada corte
+                    businessRevenue: BUSINESS_FEE_PER_CUT,
+                    // El barbero recibe el resto (precio del servicio - $6,000)
+                    barberCommission: { $subtract: ['$servicePrice', BUSINESS_FEE_PER_CUT] }
                 }
             },
             {
                 $group: {
                     _id: null,
                     grossRevenue: { $sum: '$servicePrice' }, // Ganancia bruta total
-                    netRevenue: { $sum: '$businessRevenue' }, // Ganancia neta del negocio (62.5%)
-                    totalCommissions: { $sum: '$barberCommission' }, // Total en comisiones (37.5%)
+                    netRevenue: { $sum: '$businessRevenue' }, // Ganancia neta del negocio ($6,000 × cortes)
+                    totalCommissions: { $sum: '$barberCommission' }, // Total para barberos
                     totalAppointments: { $sum: 1 }
                 }
             },
@@ -731,11 +734,11 @@ export const getNetRevenueByDateRange = async (req, res) => {
                     netRevenue: 1,
                     totalCommissions: 1,
                     totalAppointments: 1,
-                    // Porcentaje de ganancia neta (siempre será 62.5%)
+                    // Porcentaje real de ganancia neta basado en comisión fija
                     netRevenuePercentage: {
                         $cond: [
                             { $eq: ['$grossRevenue', 0] },
-                            0, // Si el ingreso bruto es 0, el porcentaje es 0
+                            0,
                             { $multiply: [ { $divide: ['$netRevenue', '$grossRevenue'] }, 100 ] }
                         ]
                     }
@@ -757,11 +760,12 @@ export const getNetRevenueByDateRange = async (req, res) => {
             endDate: format(parseISO(endDate), 'yyyy-MM-dd'),
             data: {
                 grossRevenue: data.grossRevenue, // Ingresos brutos totales
-                netRevenue: data.netRevenue, // Ganancia neta para el negocio (62.5%)
-                totalCommissions: data.totalCommissions, // Total pagado en comisiones (37.5%)
+                netRevenue: data.netRevenue, // Ganancia neta para el negocio ($6,000 × cantidad de cortes)
+                totalCommissions: data.totalCommissions, // Total pagado a barberos (precio - $6,000 por cada corte)
                 totalAppointments: data.totalAppointments,
-                netRevenuePercentage: parseFloat(data.netRevenuePercentage?.toFixed(2)) || 62.5,
-                commissionPercentage: 37.5
+                netRevenuePercentage: parseFloat(data.netRevenuePercentage?.toFixed(2)) || 0,
+                businessFeePerCut: BUSINESS_FEE_PER_CUT, // Comisión fija por corte
+                commissionModel: 'fixed' // Modelo de comisión fija
             },
             message: 'Ganancia neta calculada exitosamente.'
         });
@@ -781,17 +785,18 @@ export const getNetRevenueByDateRange = async (req, res) => {
 export const getRevenueBreakdownByBarber = async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
-
         if (!startDate || !endDate) {
             return res.status(400).json({
                 success: false,
                 message: 'Los parámetros "startDate" y "endDate" son requeridos.'
             });
         }
-
         const { startOfDay: startOfRangeUTC } = getDateRangeInColombia(startDate);
         const { endOfDay: endOfRangeUTC } = getDateRangeInColombia(endDate);
-
+        
+        // Comisión fija por corte para el negocio
+        const BUSINESS_FEE_PER_CUT = 6000;
+        
         const breakdown = await Appointment.aggregate([
           {
             $match: {
@@ -826,10 +831,15 @@ export const getRevenueBreakdownByBarber = async (req, res) => {
           },
           {
             $addFields: {
-              // Comisión del barbero (37.5%)
-              barberCommission: { $multiply: ["$totalServices", 0.375] },
-              // Lo que queda para el negocio (62.5%)
-              businessShare: { $multiply: ["$totalServices", 0.625] },
+              // El negocio recibe $6,000 por cada corte
+              businessShare: { $multiply: ["$appointmentCount", BUSINESS_FEE_PER_CUT] },
+              // El barbero recibe el total menos la comisión fija del negocio
+              barberCommission: { 
+                $subtract: [
+                  "$totalServices", 
+                  { $multiply: ["$appointmentCount", BUSINESS_FEE_PER_CUT] }
+                ] 
+              },
             },
           },
           {
@@ -857,23 +867,22 @@ export const getRevenueBreakdownByBarber = async (req, res) => {
               },
               totalServices: 1,
               appointmentCount: 1,
-              barberCommission: 1, // 37.5% para el barbero
-              businessShare: 1, // 62.5% para el negocio
+              barberCommission: 1, // Total - ($6,000 × cantidad de cortes)
+              businessShare: 1, // $6,000 × cantidad de cortes
             },
           },
           { $sort: { totalServices: -1 } },
         ]);
-
+        
         res.status(200).json({
             success: true,
             startDate: format(parseISO(startDate), 'yyyy-MM-dd'),
             endDate: format(parseISO(endDate), 'yyyy-MM-dd'),
             data: breakdown,
-            commissionPercentage: 37.5,
-            businessPercentage: 62.5,
+            businessFeePerCut: BUSINESS_FEE_PER_CUT,
+            commissionModel: 'fixed', // Indicador del modelo de comisión
             message: 'Desglose de ingresos por barbero calculado exitosamente.'
         });
-
     } catch (error) {
         console.error('❌ Error fetching revenue breakdown:', error);
         res.status(500).json({
@@ -898,6 +907,9 @@ export const getRevenueBySite = async (req, res) => {
 
         const { startOfDay: startOfRangeUTC } = getDateRangeInColombia(startDate);
         const { endOfDay: endOfRangeUTC } = getDateRangeInColombia(endDate);
+
+        // Comisión fija por corte para el negocio
+        const BUSINESS_FEE_PER_CUT = 6000;
 
         const siteRevenue = await Appointment.aggregate([
             {
@@ -933,10 +945,15 @@ export const getRevenueBySite = async (req, res) => {
             },
             {
                 $addFields: {
-                    // Comisión del barbero (37.5%)
-                    totalCommissions: { $multiply: ["$totalRevenue", 0.375] },
-                    // Ganancia neta para el negocio (62.5%)
-                    netRevenue: { $multiply: ["$totalRevenue", 0.625] }
+                    // Ganancia neta para el negocio ($6,000 × cantidad de cortes)
+                    netRevenue: { $multiply: ["$appointmentCount", BUSINESS_FEE_PER_CUT] },
+                    // Total para barberos (ingreso total - comisión del negocio)
+                    totalCommissions: { 
+                        $subtract: [
+                            "$totalRevenue", 
+                            { $multiply: ["$appointmentCount", BUSINESS_FEE_PER_CUT] }
+                        ] 
+                    }
                 }
             },
             {
@@ -954,26 +971,34 @@ export const getRevenueBySite = async (req, res) => {
                     siteId: "$_id",
                     siteName: {
                         $ifNull: [
-                    "$siteDetails.name_site", // 1. Intenta usar el nombre original (si existe)
-                    {
-                        // 2. Si el original es null, ejecuta este condicional:
-                        $cond: {
-                            if: { $ne: [ "$siteName", null ] }, // SI siteName (snapshot) NO es null
-                            then: { $concat: [ "$siteName", " (Eliminado)" ] }, // ENTONCES, concatena con la etiqueta
-                            else: "Sede Desconocida" // SINO (si ambos son null), usa el valor por defecto
-                        }
-                    }
-                ]
+                            "$siteDetails.name_site", // 1. Intenta usar el nombre original (si existe)
+                            {
+                                // 2. Si el original es null, ejecuta este condicional:
+                                $cond: {
+                                    if: { $ne: [ "$siteName", null ] }, // SI siteName (snapshot) NO es null
+                                    then: { $concat: [ "$siteName", " (Eliminado)" ] }, // ENTONCES, concatena con la etiqueta
+                                    else: "Sede Desconocida" // SINO (si ambos son null), usa el valor por defecto
+                                }
+                            }
+                        ]
                     },
                     totalRevenue: 1,
-                    netRevenue: 1,
-                    totalCommissions: 1,
+                    netRevenue: 1, // $6,000 × cantidad de cortes
+                    totalCommissions: 1, // Total para barberos
                     appointmentCount: 1,
                     averageRevenuePerAppointment: {
                         $cond: [
                             { $eq: ["$appointmentCount", 0] },
                             0,
                             { $divide: ["$totalRevenue", "$appointmentCount"] }
+                        ]
+                    },
+                    // Porcentaje real de ganancia neta por sede
+                    netRevenuePercentage: {
+                        $cond: [
+                            { $eq: ["$totalRevenue", 0] },
+                            0,
+                            { $multiply: [ { $divide: ["$netRevenue", "$totalRevenue"] }, 100 ] }
                         ]
                     }
                 }
@@ -994,14 +1019,22 @@ export const getRevenueBySite = async (req, res) => {
             totalAppointments: 0
         });
 
+        // Calcular porcentaje promedio general
+        const overallNetRevenuePercentage = totals.totalRevenue > 0 
+            ? parseFloat(((totals.netRevenue / totals.totalRevenue) * 100).toFixed(2))
+            : 0;
+
         res.status(200).json({
             success: true,
             startDate: format(parseISO(startDate), 'yyyy-MM-dd'),
             endDate: format(parseISO(endDate), 'yyyy-MM-dd'),
             data: siteRevenue,
-            totals,
-            commissionPercentage: 37.5,
-            netRevenuePercentage: 62.5,
+            totals: {
+                ...totals,
+                netRevenuePercentage: overallNetRevenuePercentage
+            },
+            businessFeePerCut: BUSINESS_FEE_PER_CUT,
+            commissionModel: 'fixed',
             message: 'Recaudo por sede calculado exitosamente.'
         });
 
