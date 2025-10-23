@@ -274,7 +274,7 @@ export const creacteCompletedService = async (req, res) => {
     if (!service || !service.duration) {
       return res.status(404).json({ success: false, message: "Servicio no encontrado o no tiene una duración definida." });
     }
-
+    
     const barber = await User.findById(barberId); 
     if (!barber) {
       return res
@@ -549,12 +549,11 @@ export const createAppointment = async (req, res) => {
 
     console.log(`✅ No hay conflictos, procediendo a crear la cita`);
 
-    // Usar startOfDay para almacenar la fecha (inicio del día en UTC para Colombia)
     const newAppointment = new Appointment({
       barberId,
       serviceId,
       siteId,
-      date: startOfDay, // Usar la fecha corregida por zona horaria
+      date: startOfDay, 
       startTime,
       endTime,
       clientName,

@@ -45,14 +45,14 @@ const appointmentSchema = new mongoose.Schema({
     required: true
   },
   startTime: {
-    type: String,  // Formato "HH:MM"
+    type: String,
     required: true
   },
   endTime: {
-    type: String,  // Calculado a partir de startTime + (opcional-buena idea pero no.) duración del servicio
+    type: String,
     required: true
   },
-  // Información del cliente
+
   clientName: {
     type: String,
     required: true
@@ -61,10 +61,8 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     required: [true, 'El teléfono es requerido'],
     validate: {
-            // Usamos una expresión regular para verificar que sea exactamente 10 dígitos.
-            // Esto cubre el formato estándar de números móviles en Colombia.
             validator: function(v) {
-                // Expresión regular: ^ (inicio de la cadena), \d{10} (exactamente 10 dígitos), $ (fin de la cadena)
+
                 return /^\d{10}$/.test(v);
             },
             message: props => `${props.value} no es un número de teléfono válido. El teléfono debe tener exactamente 10 dígitos.`
@@ -83,11 +81,11 @@ const appointmentSchema = new mongoose.Schema({
     enum: ["pendiente", "confirmada", "completada", "cancelada", "no-asistio"],
     default: "pendiente"
   },
-  isWalkIn: { // Para identificar registros manuales/sin cita
+  isWalkIn: {
     type: Boolean,
     default: false 
   },
-  completedAt: { // Fecha y hora exactas en que se marcó como completado
+  completedAt: {
     type: Date 
   },
 },{
