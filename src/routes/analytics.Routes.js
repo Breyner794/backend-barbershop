@@ -1,4 +1,5 @@
 import express from 'express';
+import { protect, restrictTo } from '../controllers/auth.Controller.js';
 import {
   getDailyBookings,
   getBookingsByStatus,
@@ -18,42 +19,44 @@ import {
 
 const router = express.Router();
 
+router.use(protect);
+
 // Ruta para obtener el número de reservas por día en un rango de fechas
-router.get('/analytics/daily-bookings', getDailyBookings);
+router.get('/analytics/daily-bookings', getDailyBookings); //para todo los usuarios.
 
 // Ruta para obtener el conteo de reservas por estado (confirmada, cancelada, etc.)
-router.get('/analytics/bookings-by-status', getBookingsByStatus);
+//router.get('/analytics/bookings-by-status', getBookingsByStatus);
 
 // Ruta para obtener los servicios más populares
-router.get('/analytics/top-services', getTopServices);
+//router.get('/analytics/top-services', getTopServices);
 
 // Ruta para obtener los barberos con más reservas
-router.get('/analytics/top-barbers', getTopBarbers);
+//router.get('/analytics/top-barbers', getTopBarbers);
 
 // Ruta para obtener la tasa de ocupación por barberos o sedes
 router.get('/analytics/occupancy-rate', getOccupancyRate);
 
 // Ruta para identificar clientes recurrentes
-router.get('/analytics/recurring-clients', getRecurringClients);
+router.route('/analytics/recurring-clients') .get(restrictTo("admin", "superadmin"), getRecurringClients);
 
 // Ruta para el recaudacion por fecha.
-router.get('/analytics/revenue-by-date-range', getRevenueByDateRange);
+router.route('/analytics/revenue-by-date-range') .get(restrictTo("admin", "superadmin"), getRevenueByDateRange);
 
 //Ruta para el recaudo por barbero. o servicio
-router.get('/analytics/revenue-by-barber-or-service', getRevenueByBarberOrService);
+router.route('/analytics/revenue-by-barber-or-service') .get(restrictTo("admin", "superadmin", "barbero"), getRevenueByBarberOrService);
 
 //Ruta para identificar servicios activos o inactivos
-router.get('/analytics/service-status', getServiceStatus);
+router.get('/analytics/service-status', getServiceStatus); //para todo los usuarios, menos clientes claramente.
 
 //Ruta para obtener las reservas cancelados o no asistidas.
 router.get('/analytics/cancellation-rate', getCancellationRate);
 
 // Ruta para el desglose de ingresos por barbero
-router.get('/analytics/revenue/breakdown', getRevenueBreakdownByBarber);
+router.route('/analytics/revenue/breakdown') .get(restrictTo("admin","superadmin"), getRevenueBreakdownByBarber);
 
 // Ruta para la ganancia neta del negocio (descontando comisiones)
-router.get('/analytics/revenue/net', getNetRevenueByDateRange);
+router.route('/analytics/revenue/net') .get(restrictTo("admin", "superadmin"), getNetRevenueByDateRange);
 
-router.get('/analytics/revenue-by-site', getRevenueBySite);
+router.route('/analytics/revenue-by-site') .get(restrictTo("admin", "superadmin"), getRevenueBySite);
 
 export default router;
