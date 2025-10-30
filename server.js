@@ -37,7 +37,6 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb'}))
 app.use(cookieParser());
 
-app.use("/api", analyticsRoutes);
 app.use('/api/auth', authRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/site", siteRoutes);
@@ -47,6 +46,7 @@ app.use("/api/reservation", reservationRoutes);
 app.use("/api/availability/exceptions", availabilityExceptionRoutes);
 app.use("/api/availability/", barberAvailability);
 app.use("/api/appointments", appointmentRoutes);
+app.use("/api", analyticsRoutes);
 
 // Middleware para manejar rutas no encontradas
 app.all('*', (req, res) => {
