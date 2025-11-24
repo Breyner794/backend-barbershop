@@ -28,8 +28,8 @@ export const validateTimeSlots = (timeSlots) => {
     }
 
     if (
-      !/^([01]\d|2[03]):([0-5]\d)$/.test(slot.startTime) ||
-      !/^([01]\d|2[03]):([0-5]\d)$/.test(slot.endTime)
+      !/^([01]\d|2[0-3]):([0-5]\d)$/.test(slot.startTime) ||
+      !/^([01]\d|2[0-3]):([0-5]\d)$/.test(slot.endTime)
     ) {
       return {
         valid: false,
