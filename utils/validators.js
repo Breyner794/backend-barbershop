@@ -64,17 +64,14 @@ export const validateTimeSlots = (timeSlots) => {
     }
     seen.add(key);
 
-    //verificar las superposiciones 
-    for(const existingSlot of slots){
-    if ((startMinutes >= existingSlot.startMinutes && startMinutes < existingSlot.endMinutes) ||
-        (endMinutes > existingSlot.startMinutes && endMinutes <= existingSlot.endMinutes) ||
-        (startMinutes <= existingSlot.startMinutes && endMinutes >= existingSlot.endMinutes) ||
-        (startMinutes >= existingSlot.startMinutes && endMinutes <= existingSlot.endMinutes)) {
-            return {
-              valid: false,
-              error: `El tiempo de fin ${slot.endTime} debe ser posterior al tiempo de inicio ${slot.startTime}`,
-            };
-        }
+    // FIX: Verificar las superposiciones con lógica simplificada
+    for (const existingSlot of slots) {
+      if (startMinutes < existingSlot.endMinutes && endMinutes > existingSlot.startMinutes) {
+        return {
+          valid: false,
+          error: `Superposición detectada: ${slot.startTime}-${slot.endTime} se superpone con ${existingSlot.startTime}-${existingSlot.endTime}`
+        };
+      }
     }
 
     slots.push({
