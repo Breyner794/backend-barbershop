@@ -9,7 +9,7 @@ export const validateTimeSlots = (timeSlots) => {
   if (!timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
     return {
       valid: false,                                                             //FUNCIONA
-      error: "Lost TimeSlots Debe de ser un array no vacio",
+      error: "Los TimeSlots Deben ser un array no vacío",
     };
   }
 
@@ -24,7 +24,7 @@ export const validateTimeSlots = (timeSlots) => {
     }
 
     if (!slot.startTime || !slot.endTime) {
-      return { valid: false, error: "Cada timeSlot debe ser un objeto" };
+      return { valid: false, error: "Cada timeSlot debe tener startTime y endTime" };
     }
 
     if (
