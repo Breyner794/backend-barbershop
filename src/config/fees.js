@@ -1,0 +1,1 @@
+export const BUSINESS_FEE_PER_CUT = 8000;

@@ -7,6 +7,7 @@ import mongoose from 'mongoose';
 import { parseISO, format, differenceInMinutes, addDays, isBefore, isSameDay } from 'date-fns';
 import { getEffectiveAvailability } from '../../utils/availabilityConflictValidator.js'; 
 import { timeToMinutes, getDateRangeInColombia } from './appointment.Controller.js'; 
+import { BUSINESS_FEE_PER_CUT } from '../config/fees.js';
 
 // --- Endpoint 1: Reservas diarias en un rango de fechas ---
 export const getDailyBookings = async (req, res) => {
@@ -685,8 +686,6 @@ export const getNetRevenueByDateRange = async (req, res) => {
         const { startOfDay: startOfRangeUTC } = getDateRangeInColombia(startDate);
         const { endOfDay: endOfRangeUTC } = getDateRangeInColombia(endDate);
 
-        // Comisión fija por corte para el negocio
-        const BUSINESS_FEE_PER_CUT = 6000;
 
         const revenueData = await Appointment.aggregate([
             {
@@ -794,8 +793,6 @@ export const getRevenueBreakdownByBarber = async (req, res) => {
         const { startOfDay: startOfRangeUTC } = getDateRangeInColombia(startDate);
         const { endOfDay: endOfRangeUTC } = getDateRangeInColombia(endDate);
         
-        // Comisión fija por corte para el negocio
-        const BUSINESS_FEE_PER_CUT = 6000;
         
         const breakdown = await Appointment.aggregate([
           {
@@ -908,8 +905,6 @@ export const getRevenueBySite = async (req, res) => {
         const { startOfDay: startOfRangeUTC } = getDateRangeInColombia(startDate);
         const { endOfDay: endOfRangeUTC } = getDateRangeInColombia(endDate);
 
-        // Comisión fija por corte para el negocio
-        const BUSINESS_FEE_PER_CUT = 6000;
 
         const siteRevenue = await Appointment.aggregate([
             {
