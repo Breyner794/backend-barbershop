@@ -8,6 +8,7 @@ import { nanoid } from "nanoid";
 import mongoose from "mongoose";
 import { getEffectiveAvailability } from "../../utils/availabilityConflictValidator.js";
 import { format } from "date-fns";
+import { getTodayColombiaString, createColombianDate } from "../../utils/dateUtils.js";
 
 export const timeToMinutes = (time) => {
   if (!time || !time.includes(":")) return 0;
@@ -20,15 +21,15 @@ export const timeToMinutes = (time) => {
 //   return date.getDay();
 // };
 
-export const createColombianDate = (dateString) => {
-  // Crear fecha en Colombia (UTC-5)
-  const colombiaOffset = -5 * 60; // Colombia es UTC-5 (en minutos)
-  const date = new Date(dateString + "T00:00:00");
+// export const createColombianDate = (dateString) => {
+//   // Crear fecha en Colombia (UTC-5)
+//   const colombiaOffset = -5 * 60; // Colombia es UTC-5 (en minutos)
+//   const date = new Date(dateString + "T00:00:00");
   
-  // Ajustar por la diferencia de zona horaria
-  const utcDate = new Date(date.getTime() - (colombiaOffset * 60 * 1000));
-  return utcDate;
-};
+//   // Ajustar por la diferencia de zona horaria
+//   const utcDate = new Date(date.getTime() - (colombiaOffset * 60 * 1000));
+//   return utcDate;
+// };
 
 export const getDateRangeInColombia = (dateString) => {
   // Inicio del día en Colombia
@@ -265,8 +266,7 @@ export const creacteCompletedService = async (req, res) => {
 
     const phoneToSave = clientPhone && clientPhone.trim() !== '' ? clientPhone : '0000000000';
 
-    const TIMEZONE = 'America/Bogota';
-    const todayString = format(new Date(), 'yyyy-MM-dd', { timeZone: TIMEZONE });
+    const todayString = getTodayColombiaString();
 
     const appointmentDateObject = createColombianDate(todayString);
 
